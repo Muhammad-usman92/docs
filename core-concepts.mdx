@@ -1,0 +1,233 @@
+---
+title: "Core Concepts: Sessions, Sector Packs, and Scenario Runs"
+sidebarTitle: "Core Concepts"
+description: "Understand the key building blocks of BEL SOIL: sessions, sector packs, conditions, events, and the output objects they produce."
+---
+
+Before you build an integration with BEL SOIL, you need a clear mental model of how the platform is structured. The concepts on this page are the building blocks that every SOIL workflow depends on. Understanding them will help you structure valid requests, interpret output correctly, and design integrations that respect SOIL's safety posture. Read this page before diving into the guides.
+
+---
+
+## SOIL Session
+
+A **SOIL session** is the fundamental unit of analytical context in BEL SOIL. When you create a session, SOIL issues a `soilSessionId` that acts as a persistent binding between your tenant, your organization, and a specific program scope.
+
+Every scenario run you create must reference a valid `soilSessionId`. This design means you can:
+
+- Group related scenario runs under a single organizational context
+- Trace all analytical activity back to a specific session for audit purposes
+- Scope analysis correctly so that outputs never mix organizational contexts
+
+A session is created with three required fields:
+
+```json
+{
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "programId": "program_demo"
+}
+```
+
+The returned `soilSessionId` is the reference you pass into every subsequent `createScenarioRun` request. Sessions remain active until explicitly closed or expired according to your tenant configuration.
+
+<Note>
+  Always create a session before you create a scenario run. A scenario run submitted without a valid `soilSessionId` will fail input validation and return a safe failure response.
+</Note>
+
+---
+
+## Sector Pack
+
+A **sector pack** is the configuration object that defines which analytical domain a scenario run operates in. In SOIL's type system this is the `SoilCompletionSectorPackConfig`, versioned as **SectorPackConfig v2**.
+
+The sector pack governs:
+
+- Which condition types are permitted in this analytical domain
+- Which event types are valid inputs
+- Which output objects SOIL will generate
+- Which guardrails and suppression rules apply
+
+### Available Sector Packs
+
+SOIL currently supports three sector packs:
+
+| `sectorPackId` | Domain |
+|---|---|
+| `hbx_workplace_readiness_compliance` | HBX Workplace Readiness & Compliance — covers EEO activity, workload pressure, and workforce readiness signals |
+| `capital_public_finance` | Capital & Public Finance — covers financial readiness, capital planning, and public-sector fiscal scenarios |
+| `revenue_commercial` | Revenue & Commercial — covers commercial revenue readiness, operational performance, and market-facing scenarios |
+
+### Referencing a Sector Pack
+
+You reference a sector pack in your scenario run request using two fields:
+
+```json
+{
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "sectorPackVersion": "v2"
+}
+```
+
+The `sectorPackVersion` field must match the active schema version for the pack. All current packs operate at `v2`. If you submit an unsupported version, SOIL returns a safe failure response.
+
+---
+
+## Conditions
+
+**Conditions** describe the current state of your organization at the time of the scenario run. A condition is a structured, source-authorized signal — not a legal finding, allegation determination, or medical assessment. Conditions tell SOIL what your organization is experiencing so the scenario engine can analyze readiness impact.
+
+For example, the condition `eeo_complaint_activity` describes elevated EEO-related reported activity in a specific department. SOIL uses this signal — alongside other conditions and events — to project readiness trajectories. It does not adjudicate the activity or issue a finding.
+
+### Condition Object Fields
+
+```json
+{
+  "conditionId": "eeo_complaint_activity",
+  "conditionVersion": "v1",
+  "category": "reported_activity",
+  "intensity": "elevated",
+  "durationDays": 120,
+  "affectedDepartments": ["department_operations"],
+  "affectedUnits": ["unit_north"],
+  "affectedLocations": ["facility_1"],
+  "affectedMissionAreas": ["service_delivery"],
+  "state": "active",
+  "trend": "worsening",
+  "confidence": 0.71,
+  "assumptions": ["Activity is aggregated and source-authorized."],
+  "limitations": ["Reported activity is not a finding."]
+}
+```
+
+| Field | Description |
+|---|---|
+| `conditionId` | The identifier for the condition type. Must be a recognized condition within the active sector pack. |
+| `conditionVersion` | Schema version for this condition type (e.g., `v1`). |
+| `category` | The broad category of this condition (e.g., `reported_activity`). |
+| `intensity` | How severe the condition is: `low`, `moderate`, `elevated`, or `high`. |
+| `durationDays` | How many days this condition has been or is expected to remain active. |
+| `affectedDepartments` | The organizational departments affected by this condition. |
+| `state` | Current state of the condition: `active`, `resolved`, or `monitoring`. |
+| `trend` | Direction the condition is moving: `improving`, `stable`, or `worsening`. |
+| `confidence` | A 0–1 confidence score for the condition signal. Must be source-authorized. |
+| `assumptions` | Explicit assumptions the analyst or source has made about this condition. |
+| `limitations` | Explicit limitations or scoping notes — for example, that reported activity is not a legal finding. |
+
+<Note>
+  The `assumptions` and `limitations` fields are required. They ensure that every condition input carries explicit analytical guardrails that reviewers can evaluate alongside the output.
+</Note>
+
+---
+
+## Events
+
+**Events** describe discrete occurrences that affect your organization's readiness posture at a specific point in time. Where conditions describe ongoing states, events describe bounded incidents with a start state and an end state.
+
+For example, the event `workload_pressure_spike` captures a surge in operational pressure affecting a specific department — with a defined duration, intensity, and the state transition it drives (e.g., from `stable` to `review_required`).
+
+### Event Object Fields
+
+```json
+{
+  "eventId": "workload_pressure_spike",
+  "eventType": "operational_pressure",
+  "eventVersion": "v1",
+  "intensity": "elevated",
+  "durationDays": 45,
+  "affectedEntityIds": ["department_operations"],
+  "startState": "stable",
+  "endState": "review_required"
+}
+```
+
+| Field | Description |
+|---|---|
+| `eventId` | The identifier for this specific event instance. |
+| `eventType` | The type of event — must be recognized by the active sector pack (e.g., `operational_pressure`). |
+| `eventVersion` | Schema version for this event type. |
+| `intensity` | Severity of the event: `low`, `moderate`, `elevated`, or `high`. |
+| `durationDays` | How long the event lasted or is expected to last. |
+| `affectedEntityIds` | The organizational entities (departments, units, locations) affected by this event. |
+| `startState` | The organizational state before this event occurred (e.g., `stable`). |
+| `endState` | The organizational state after this event (e.g., `review_required`). |
+
+The `startState` → `endState` transition is one of the key signals SOIL uses to build state transition history and Readiness Horizon projections.
+
+---
+
+## Scenario Run
+
+A **scenario run** is the assembled analytical output produced when SOIL validates your conditions and events against a sector pack. It is the top-level output object your integration receives after calling `createScenarioRun`.
+
+A scenario run is not just a container — it is a governed, versioned object that records exactly what was submitted, whether it passed validation, and what the output posture is. You can retrieve a scenario run at any time using `getScenarioRun`.
+
+### Key Scenario Run Fields
+
+```json
+{
+  "scenarioId": "scenario_request_valid",
+  "soilSessionId": "soil_session_abc123",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "sectorPackVersion": "v2",
+  "inputValidationStatus": "accepted",
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true,
+  "approvalStatus": "READY_FOR_REVIEW",
+  "isSynthetic": true,
+  "correlationId": "corr_request_valid",
+  "auditReference": "audit_request_valid"
+}
+```
+
+| Field | Description |
+|---|---|
+| `scenarioId` | The unique identifier for this scenario run. Use this as the `scenarioRunId` when calling `getScenarioRun`. |
+| `soilSessionId` | The session this scenario run belongs to. |
+| `sectorPackId` | The sector pack used for this analysis. |
+| `inputValidationStatus` | Whether SOIL accepted or rejected the input: `accepted` or `rejected`. |
+| `humanReviewRequired` | Always `true`. Every scenario run requires human review before action. |
+| `decisionSupportOnly` | Always `true`. This output supports decisions — it does not make them. |
+| `approvalStatus` | Always `READY_FOR_REVIEW`. Indicates the output is ready for your review workflow, not that it has been approved. |
+| `correlationId` | Your correlation token, passed through for end-to-end tracing. |
+| `auditReference` | Your audit reference, passed through for your audit trail. |
+
+---
+
+## Output Objects
+
+A scenario run triggers the generation of a set of downstream output objects, each serving a specific analytical purpose. These objects include:
+
+- **Readiness Horizon Projection** — base, upside, downside, and stress-case readiness trajectory
+- **Executive Readiness Assessment** — leadership-level summary with evidence, assumption, and confidence ledgers
+- **Workplace Compliance Output** — suppressed and rolled-up workplace readiness signals
+- **Map-Consumable Output** — structured geographic output object (map rendering is not included)
+- **Human-Environment Fusion** — merged human and environmental signal object
+- **OCM-10 Handoff** — organizational change management handoff object
+- **Reality Feedback Hook** — feedback signal object (automatic recalibration is blocked)
+- **Benchmark-Ready Output** — benchmarking-structured object (active ranking and cross-tenant comparisons are blocked)
+- **Observability Trace** — full audit-grade trace of the analytical path
+- **Protected-Use Status** — status object confirming which use restrictions apply to this output
+
+For the full catalogue of output object schemas and field references, see the [Outputs Overview](/outputs/overview).
+
+---
+
+## Safety Fields
+
+Every output object that BEL SOIL produces — scenario runs, projections, assessments, traces, safe failures, and all downstream objects — carries these three mandatory safety fields:
+
+<Note>
+  **These three fields are non-negotiable and non-overridable on every SOIL output:**
+
+  ```json
+  {
+    "decisionSupportOnly": true,
+    "humanReviewRequired": true,
+    "approvalStatus": "READY_FOR_REVIEW"
+  }
+  ```
+
+  Your integration **must** check for these fields before routing any SOIL output to a downstream system or process. If any of these fields is missing or carries an unexpected value, treat the output as invalid and do not act on it.
+
+  `READY_FOR_REVIEW` does not mean approved. It means the output has passed SOIL's internal guardrails and is ready for **your** qualified human reviewers to evaluate. Final approval authority always rests with your designated reviewers and BEL Technologies — never with the SOIL system itself.
+</Note>

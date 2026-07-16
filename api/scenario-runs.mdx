@@ -1,0 +1,276 @@
+---
+title: "Scenario Run API: Create and Retrieve Scenario Runs"
+sidebarTitle: "Scenario Runs"
+description: "POST /createScenarioRun runs sector-based scenario analysis. GET /getScenarioRun retrieves the resulting output. Both require valid session and sector pack configuration."
+---
+
+`createScenarioRun` and `getScenarioRun` are the two endpoints at the core of the BEL SOIL analysis workflow. You use `createScenarioRun` to submit a fully-specified scenario — including conditions, events, sector pack configuration, and governance declarations — and receive back a structured run object with an approval status. You then use `getScenarioRun` to retrieve that run object by ID at any later point. Both endpoints require a valid `soilSessionId` from a previously created session, and both enforce the governance fields that ensure all output remains in decision-support posture.
+
+---
+
+## POST /createScenarioRun
+
+Submits a scenario run request with conditions, events, and a sector pack specification. The service validates the request against the active sector pack contract, enforces governance field requirements, and returns either an accepted run object or a structured rejection response.
+
+### Request parameters
+
+<ParamField body="scenarioId" type="string" required>
+  Your identifier for this scenario. Use a value that is meaningful in your system — it is stored and echoed in the response and all downstream objects.
+</ParamField>
+
+<ParamField body="soilSessionId" type="string" required>
+  The identifier of the SOIL session this run belongs to. You must create a session with `createSoilSession` before submitting a scenario run.
+</ParamField>
+
+<ParamField body="tenantId" type="string" required>
+  Your tenant identifier. Must match the `tenantId` on the session.
+</ParamField>
+
+<ParamField body="organizationId" type="string" required>
+  The organization within the tenant. Must match the `organizationId` on the session.
+</ParamField>
+
+<ParamField body="programId" type="string">
+  The specific program or initiative this scenario run belongs to.
+</ParamField>
+
+<ParamField body="sectorPackId" type="string" required>
+  The identifier of the sector pack to use for this run. For example: `hbx_workplace_readiness_compliance`. The sector pack governs which conditions and events are valid, how outputs are assembled, and what suppression and rollup rules apply.
+</ParamField>
+
+<ParamField body="sectorPackVersion" type="string" required>
+  The version of the sector pack. Currently `"v2"`. You must specify an exact version — the API does not resolve `"latest"` aliases.
+</ParamField>
+
+<ParamField body="conditions" type="array" required>
+  An array of condition objects describing the active environmental or organizational conditions for this scenario. Each condition must be recognized by the specified sector pack. See the full request example below for the condition object shape.
+</ParamField>
+
+<ParamField body="events" type="array" required>
+  An array of event objects describing operational or situational events that affect the scenario. Each event must be compatible with the specified sector pack. See the full request example below for the event object shape.
+</ParamField>
+
+<ParamField body="isSynthetic" type="boolean" required>
+  Set to `true` when submitting test or sample data. Set to `false` for runs based on real operational data. This field is stored in the run record and included in all audit output.
+</ParamField>
+
+<ParamField body="humanReviewRequired" type="boolean" required>
+  Must be `true`. Declares that all output from this run requires human review before any action is taken. Requests that set this to `false` or omit it are rejected.
+</ParamField>
+
+<ParamField body="decisionSupportOnly" type="boolean" required>
+  Must be `true`. Declares that output is for decision support purposes only and may not be used to make autonomous or final decisions. Requests that set this to `false` or omit it are rejected.
+</ParamField>
+
+<ParamField body="correlationId" type="string">
+  Your correlation reference for tracing this run back to an event in your system. Echoed in the response and all audit objects.
+</ParamField>
+
+<ParamField body="auditReference" type="string">
+  Your audit system reference. Included in all sanitized audit events generated for this run.
+</ParamField>
+
+<ParamField body="assumptions" type="string[]">
+  Request-level assumption statements. These are stored on the run record and can be referenced in the Evidence Ledger and Assumption Ledger objects produced by the full completion package.
+</ParamField>
+
+### Full sample request
+
+```json
+{
+  "scenarioId": "scenario_request_valid",
+  "soilSessionId": "soil_session_request_valid",
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "programId": "program_demo",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "sectorPackVersion": "v2",
+  "conditions": [
+    {
+      "conditionId": "eeo_complaint_activity",
+      "conditionVersion": "v1",
+      "category": "reported_activity",
+      "intensity": "elevated",
+      "durationDays": 120,
+      "affectedDepartments": ["department_operations"],
+      "affectedUnits": ["unit_north"],
+      "affectedLocations": ["facility_1"],
+      "affectedMissionAreas": ["service_delivery"],
+      "state": "active",
+      "trend": "worsening",
+      "confidence": 0.71,
+      "assumptions": ["Activity is aggregated and source-authorized."],
+      "limitations": ["Reported activity is not a finding."]
+    }
+  ],
+  "events": [
+    {
+      "eventId": "workload_pressure_spike",
+      "eventType": "operational_pressure",
+      "eventVersion": "v1",
+      "intensity": "elevated",
+      "durationDays": 45,
+      "affectedEntityIds": ["department_operations"],
+      "startState": "stable",
+      "endState": "review_required"
+    }
+  ],
+  "isSynthetic": true,
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true,
+  "correlationId": "corr_request_valid",
+  "auditReference": "audit_request_valid",
+  "assumptions": ["Request-level scenario creation proof."]
+}
+```
+
+### Accepted response
+
+When the request passes all validation and governance checks, you receive an `ok: true` response with the scenario run object:
+
+```json
+{
+  "ok": true,
+  "scenarioRun": {
+    "scenarioId": "scenario_request_valid",
+    "sectorPackId": "hbx_workplace_readiness_compliance",
+    "sectorPackVersion": "v2",
+    "inputValidationStatus": "accepted",
+    "isSynthetic": true,
+    "humanReviewRequired": true,
+    "decisionSupportOnly": true,
+    "approvalStatus": "READY_FOR_REVIEW"
+  },
+  "warnings": []
+}
+```
+
+<ResponseField name="ok" type="boolean" required>
+  `true` when the scenario run was accepted and created successfully.
+</ResponseField>
+
+<ResponseField name="scenarioRun.scenarioId" type="string" required>
+  The `scenarioId` you provided in the request, confirmed in the response.
+</ResponseField>
+
+<ResponseField name="scenarioRun.approvalStatus" type="string" required>
+  The governance approval status of the run. Always `"READY_FOR_REVIEW"` — no run is ever returned with an automatically approved or final status. Human review is required before any action may be taken on the output.
+</ResponseField>
+
+<ResponseField name="scenarioRun.humanReviewRequired" type="boolean" required>
+  Always `true` on an accepted run. Confirms the governance posture of the output.
+</ResponseField>
+
+<ResponseField name="scenarioRun.decisionSupportOnly" type="boolean" required>
+  Always `true` on an accepted run. Confirms that the output is for decision support use only.
+</ResponseField>
+
+<ResponseField name="scenarioRun.inputValidationStatus" type="string" required>
+  The result of input validation. Returns `"accepted"` when all conditions, events, and sector pack references are valid.
+</ResponseField>
+
+<ResponseField name="warnings" type="array" required>
+  An array of warning strings. Empty when the run was accepted without any advisory conditions. Non-empty warnings do not indicate rejection — they are informational flags for the reviewing analyst.
+</ResponseField>
+
+### Rejection response
+
+When the request fails validation — for example, because a `conditionId` is not recognized by the sector pack, or because a governance field is missing — the API returns `ok: false` with a structured rejection package. No scenario output is generated from a rejected request.
+
+```json
+{
+  "ok": false,
+  "outputStatus": "rejected",
+  "rejectionReasons": ["unknown_condition:unknown_condition"],
+  "safeFallbackOutput": {
+    "outputStatus": "rejected",
+    "decisionSupportOnly": true,
+    "humanReviewRequired": true,
+    "prohibitedUses": [
+      "No unsafe SOIL output generated from rejected input.",
+      "No final decision may be made from rejected input."
+    ],
+    "auditReference": "audit_failure",
+    "correlationId": "corr_failure"
+  },
+  "sanitizedAuditEvent": {
+    "auditEventId": "sanitized_audit_failure",
+    "eventType": "soil_completion_failure_path_rejected",
+    "status": "failure",
+    "sanitized": true,
+    "reasonCodes": ["unknown_condition:unknown_condition"],
+    "auditReference": "audit_failure",
+    "correlationId": "corr_failure"
+  }
+}
+```
+
+See the [Error Responses section in the API Overview](/api/overview#error-responses) for a full list of rejection reason codes and their meanings.
+
+---
+
+## GET /getScenarioRun
+
+Retrieves a scenario run by its identifier. Use this endpoint to check the state of a previously submitted run or to retrieve its output for downstream consumption.
+
+### Request
+
+Pass the run identifier as a query string parameter:
+
+```bash
+curl "http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/getScenarioRun?scenarioRunId=scenario_request_valid"
+```
+
+<ParamField query="scenarioRunId" type="string" required>
+  The unique identifier of the scenario run to retrieve. This corresponds to the `scenarioId` you provided when creating the run.
+</ParamField>
+
+### Response
+
+```json
+{
+  "ok": true,
+  "scenarioRun": {
+    "scenarioId": "scenario_request_valid",
+    "sectorPackId": "hbx_workplace_readiness_compliance",
+    "sectorPackVersion": "v2",
+    "inputValidationStatus": "accepted",
+    "isSynthetic": true,
+    "humanReviewRequired": true,
+    "decisionSupportOnly": true,
+    "approvalStatus": "READY_FOR_REVIEW"
+  }
+}
+```
+
+<ResponseField name="ok" type="boolean" required>
+  `true` when the scenario run was found and returned successfully.
+</ResponseField>
+
+<ResponseField name="scenarioRun.scenarioId" type="string" required>
+  The identifier of the retrieved scenario run.
+</ResponseField>
+
+<ResponseField name="scenarioRun.sectorPackId" type="string" required>
+  The sector pack used for this run.
+</ResponseField>
+
+<ResponseField name="scenarioRun.sectorPackVersion" type="string" required>
+  The sector pack version used for this run.
+</ResponseField>
+
+<ResponseField name="scenarioRun.approvalStatus" type="string" required>
+  The governance approval status of the run. `"READY_FOR_REVIEW"` until a human reviewer acts on the output.
+</ResponseField>
+
+<ResponseField name="scenarioRun.humanReviewRequired" type="boolean" required>
+  `true` — all SOIL output requires human review.
+</ResponseField>
+
+<ResponseField name="scenarioRun.decisionSupportOnly" type="boolean" required>
+  `true` — output is for decision support use only.
+</ResponseField>
+
+<Note>
+  The REST endpoint returns the **core scenario run object**. The full M2 output package — which includes the spike ledger, workplace compliance output, map-consumable output, Human-Environment Fusion object, OCM-10 handoff, Reality Feedback Hook, Readiness Horizon projection, projected-vs-observed comparison, Executive Readiness Assessment, Evidence Ledger, Assumption Ledger, Confidence Ledger, Observability Trace Hook, and Protected-Use Status Hook — is accessed through the backend SDK function `createSoilCompletionPhase1SamplePackage()`. See the source proof map in the M2 handoff for export paths.
+</Note>

@@ -1,0 +1,144 @@
+---
+title: "Environmental Intelligence Output with SOIL EOS"
+sidebarTitle: "Environmental Output"
+description: "Use the SOIL EOS module to produce Environmental Operating Snapshot outputs covering condition signals, confidence levels, and readiness indicators."
+---
+
+The **Environmental Operating Snapshot (EOS)** module provides structured environmental intelligence for SOIL scenario runs. EOS aggregates environmental condition signals — such as geographic location pressures, environmental state trends, and duration-weighted intensity — into a governed output object that gives reviewers a calibrated picture of environmental readiness. EOS output is paired with confidence levels and readiness indicators, making it usable as a structured input to broader organizational readiness assessments.
+
+EOS does not certify environmental compliance or safety. It produces decision-support output for internal review.
+
+---
+
+## Environmental Condition Input
+
+Each environmental condition you model is described by a `SoilCompletionEnvironmentalConditionInput` object. Build your inputs with the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `conditionId` | `string` | Identifier for the environmental condition type. |
+| `category` | `string` | Category of the condition (e.g., `"climate_exposure"`, `"site_risk"`, `"operational_environment"`). |
+| `intensity` | `string` | Condition intensity: `"low"`, `"moderate"`, `"elevated"`, or `"high"`. |
+| `durationDays` | `number` | Number of days the condition spans. |
+| `affectedLocations` | `string[]` | Location identifiers affected by this condition. |
+| `state` | `string` | Current state: `"active"`, `"resolved"`, or `"monitoring"`. |
+| `trend` | `string` | Direction of change: `"improving"`, `"stable"`, or `"worsening"`. |
+| `confidence` | `number` | Confidence score from `0.0` to `1.0`. |
+| `assumptions` | `string[]` | Assumptions governing interpretation of the condition. |
+| `limitations` | `string[]` | Known limitations or caveats on the input data. |
+
+Before passing an environmental condition input to EOS, validate it with `validateEosEnvironmentalConditionInput`:
+
+```typescript
+import { validateEosEnvironmentalConditionInput } from "@bel/soil-completion";
+
+const conditionInput = {
+  conditionId: "site_climate_exposure_elevated",
+  category: "climate_exposure",
+  intensity: "elevated",
+  durationDays: 60,
+  affectedLocations: ["facility_north", "facility_east"],
+  state: "active",
+  trend: "worsening",
+  confidence: 0.74,
+  assumptions: ["Climate exposure data sourced from approved regional assessment."],
+  limitations: ["Projection window limited to 60-day horizon."],
+};
+
+const validation = validateEosEnvironmentalConditionInput(conditionInput);
+
+if (!validation.valid) {
+  console.error("Invalid EOS condition input:", validation.errors);
+} else {
+  console.log("Condition input is valid.");
+}
+```
+
+---
+
+## Building EOS Output
+
+Use `buildEosEnvironmentalOutput()` to produce the governed `SoilCompletionEosEnvironmentalOutput` object from one or more validated condition inputs:
+
+```typescript
+import {
+  buildEosEnvironmentalOutput,
+  validateEosEnvironmentalConditionInput,
+} from "@bel/soil-completion";
+
+const conditionInput = {
+  conditionId: "site_climate_exposure_elevated",
+  category: "climate_exposure",
+  intensity: "elevated",
+  durationDays: 60,
+  affectedLocations: ["facility_north", "facility_east"],
+  state: "active",
+  trend: "worsening",
+  confidence: 0.74,
+  assumptions: ["Climate exposure data sourced from approved regional assessment."],
+  limitations: ["Projection window limited to 60-day horizon."],
+};
+
+const eosOutput = buildEosEnvironmentalOutput({
+  conditions: [conditionInput],
+  correlationId: "corr_eos_001",
+  auditReference: "audit_eos_001",
+});
+
+console.log("EOS condition summary:", eosOutput.conditionSummary);
+console.log("Confidence level:", eosOutput.confidenceLevel);
+console.log("Approval status:", eosOutput.approvalStatus);
+```
+
+---
+
+## EOS Output Fields
+
+`buildEosEnvironmentalOutput()` returns a `SoilCompletionEosEnvironmentalOutput` object with the following key fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `conditionSummary` | `string` | A structured summary of the aggregated environmental conditions. |
+| `intensitySummary` | `string` | The rolled-up intensity level across all input conditions. |
+| `trendSummary` | `string` | The overall trend direction derived from input condition trends. |
+| `confidenceLevel` | `number` | Aggregated confidence score across all input conditions. |
+| `readinessIndicators` | `object` | Structured indicators describing environmental readiness posture across affected locations and mission areas. |
+| `approvalStatus` | `string` | Always `"READY_FOR_REVIEW"`. EOS outputs do not carry final-approval status. |
+| `decisionSupportOnly` | `boolean` | Always `true`. |
+| `humanReviewRequired` | `boolean` | Always `true`. |
+
+---
+
+## Map-Consumable Contract
+
+EOS output can be paired with `buildMapConsumableOutput()` to produce a **map-consumable contract object** — a structured data object ready for downstream consumption by map-aware systems or GIS pipelines.
+
+```typescript
+import {
+  buildEosEnvironmentalOutput,
+  buildMapConsumableOutput,
+} from "@bel/soil-completion";
+
+const eosOutput = buildEosEnvironmentalOutput({
+  conditions: [conditionInput],
+  correlationId: "corr_eos_map_001",
+  auditReference: "audit_eos_map_001",
+});
+
+const mapContract = buildMapConsumableOutput({
+  eosOutput,
+  correlationId: "corr_map_001",
+  auditReference: "audit_map_001",
+});
+
+console.log("Map rendering included:", mapContract.mapRenderingIncluded); // false
+console.log("Map contract ready:", mapContract);
+```
+
+**Important:** `mapRenderingIncluded` is always `false`. SOIL produces structured data contracts — it does not render maps, generate GIS layers, serve map tiles, perform geocoding, or produce any frontend map visualization. The map-consumable contract is a data handoff object for systems that do their own rendering downstream.
+
+For more details on the map-consumable contract shape, see [Map-Consumable Output](/outputs/map-consumable).
+
+<Note>
+  EOS output is decision support. It does not certify environmental compliance, safety, or regulatory adherence. All EOS outputs carry `approvalStatus: "READY_FOR_REVIEW"` and require human review before any downstream use or action.
+</Note>

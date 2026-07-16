@@ -1,0 +1,182 @@
+---
+title: "Human-Environment Fusion Object in BEL SOIL"
+sidebarTitle: "Human-Environment Fusion"
+description: "The Human-Environment Fusion object merges human-activity signals with environmental condition data to produce a combined organizational readiness signal."
+---
+
+The Human-Environment Fusion object represents SOIL's combined signal layer — a structured merge of human-activity signals and environmental-condition signals into a single organizational readiness indicator. Rather than treating workplace dynamics and environmental conditions as separate analysis streams, the Fusion object synthesizes them into a unified readiness score and surfaces a convergence flag when multiple signals align. It is paired with the OCM-10 Handoff object for organizational change management workflows and with the Reality Feedback Hook for post-run observed-vs-expected calibration. Like all SOIL outputs, the Fusion object is decision support — it informs human review, not automated action.
+
+## Fusion Object Fields
+
+The `SoilCompletionHumanEnvironmentFusion` type carries the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `humanActivitySignals` | `ActivitySignal[]` | Structured signals derived from human-activity conditions in the scenario run |
+| `environmentalConditionSignals` | `ConditionSignal[]` | Structured signals derived from environmental conditions in the scenario run |
+| `fusedReadinessScore` | `number` | The combined readiness score produced by merging both signal sets (0.0–1.0) |
+| `convergenceFlag` | `boolean` | `multiSignalConvergenceFlag` — `true` when multiple signals align toward the same readiness direction |
+| `fusionMethod` | `string` | Identifier for the method used to merge the two signal sets |
+| `schemaVersion` | `string` | Always `human_environment_fusion_v1` |
+| `approvalStatus` | `string` | Always `READY_FOR_REVIEW` |
+| `humanReviewRequired` | `boolean` | Always `true` |
+| `decisionSupportOnly` | `boolean` | Always `true` |
+
+The `fusedReadinessScore` is not simply an average of the two signal sets. SOIL applies the fusion method defined in the active sector pack to weight, normalize, and combine signals into a coherent composite score.
+
+## Multi-Signal Convergence
+
+The `convergenceFlag` (`multiSignalConvergenceFlag`) indicates when multiple signals from both the human-activity and environmental-condition sets point in the same readiness direction simultaneously. When `convergenceFlag` is `true`, it means that independent signal streams are corroborating each other — a condition worth prioritizing in human review.
+
+<Note>
+The convergence flag is informational. It surfaces a pattern for human review — it does not trigger automatic action, automatic escalation, or a change in the approval status of any output object. A reviewer must evaluate what the convergence means in context.
+</Note>
+
+Convergence can indicate:
+
+- Concurrent elevated activity across both human-activity and environmental dimensions
+- Multiple independent conditions trending in the same direction within the same projection window
+- Cross-domain risk alignment that a single-signal analysis would not reveal
+
+When the `convergenceFlag` is `false`, it means the two signal sets do not currently corroborate each other — which may indicate diverging conditions, incomplete data, or different risk trajectories across the two dimensions.
+
+## OCM-10 Handoff
+
+The `SoilCompletionOcm10Handoff` object is the organizational change management companion to the Human-Environment Fusion result. It packages the fusion findings into a structured handoff for OCM workflows — making it easy to pass the combined readiness signal to change management teams, program leads, or review boards without re-deriving context.
+
+Key fields in `SoilCompletionOcm10Handoff`:
+
+| Field | Type | Description |
+|---|---|---|
+| `ocm10SchemaVersion` | `string` | Schema version for the OCM-10 handoff object (`ocm10_handoff_v1`) |
+| `handoffStatus` | `string` | Current status of the handoff (e.g., `pending_review`, `in_review`) |
+| `linkedFusionObjectId` | `string` | Reference ID of the associated `HumanEnvironmentFusion` object |
+| `reviewerNotes` | `string[]` | Optional structured notes from the reviewer receiving the handoff |
+| `approvalStatus` | `string` | Always `READY_FOR_REVIEW` |
+
+Use `buildOcm10Handoff()` to produce the handoff object and `validateOcm10Handoff()` to validate it:
+
+```typescript
+import {
+  buildOcm10Handoff,
+  validateOcm10Handoff,
+} from "functions/src/soil/services/soilCompletion";
+
+const ocm10Handoff = buildOcm10Handoff({
+  linkedFusionObjectId: "fusion_run_001",
+  tenantId: "tenant_demo",
+  organizationId: "org_demo",
+  handoffStatus: "pending_review",
+  reviewerNotes: [
+    "Multi-signal convergence flagged — prioritize cross-domain review.",
+  ],
+});
+
+const validationResult = validateOcm10Handoff(ocm10Handoff);
+```
+
+## Building Fusion Output
+
+Use `buildHumanEnvironmentFusion()` to produce the fusion object from a completed scenario run, then validate it with `validateHumanEnvironmentFusion()`.
+
+```typescript
+import {
+  buildHumanEnvironmentFusion,
+  validateHumanEnvironmentFusion,
+} from "functions/src/soil/services/soilCompletion";
+
+const fusionOutput = buildHumanEnvironmentFusion({
+  scenarioRunId: "scenario_run_001",
+  tenantId: "tenant_demo",
+  organizationId: "org_demo",
+  sectorPackId: "hbx_workplace_readiness_compliance",
+  humanActivitySignals: [
+    {
+      signalId: "eeo_complaint_activity",
+      intensity: "elevated",
+      durationDays: 120,
+      confidence: 0.71,
+    },
+  ],
+  environmentalConditionSignals: [
+    {
+      signalId: "operational_pressure_spike",
+      intensity: "elevated",
+      durationDays: 45,
+      confidence: 0.68,
+    },
+  ],
+});
+
+const validationResult = validateHumanEnvironmentFusion(fusionOutput);
+
+if (!validationResult.ok) {
+  console.error("Fusion validation failed:", validationResult.errors);
+}
+```
+
+A validated Human-Environment Fusion output looks like this:
+
+```json
+{
+  "scenarioRunId": "scenario_run_001",
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "humanActivitySignals": [
+    {
+      "signalId": "eeo_complaint_activity",
+      "intensity": "elevated",
+      "durationDays": 120,
+      "confidence": 0.71
+    }
+  ],
+  "environmentalConditionSignals": [
+    {
+      "signalId": "operational_pressure_spike",
+      "intensity": "elevated",
+      "durationDays": 45,
+      "confidence": 0.68
+    }
+  ],
+  "fusedReadinessScore": 0.55,
+  "convergenceFlag": true,
+  "fusionMethod": "weighted_sector_pack_merge_v1",
+  "schemaVersion": "human_environment_fusion_v1",
+  "approvalStatus": "READY_FOR_REVIEW",
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true
+}
+```
+
+## Reality Feedback Hook
+
+The `SoilCompletionRealityFeedbackHook` captures observed-vs-expected feedback after a scenario run for later structured review. It is designed to surface divergences between what SOIL projected and what was subsequently observed — without triggering any automatic model change.
+
+Key field: `automaticRecalibration` is always `false`. SOIL never recalibrates its models automatically based on feedback data.
+
+Use `buildRealityFeedbackHook()` to produce the feedback object:
+
+```typescript
+import {
+  buildRealityFeedbackHook,
+  validateRealityFeedbackHook,
+} from "functions/src/soil/services/soilCompletion";
+
+const feedbackHook = buildRealityFeedbackHook({
+  scenarioRunId: "scenario_run_001",
+  linkedFusionObjectId: "fusion_run_001",
+  observedOutcome: "Fused readiness score remained below 0.60 over 60-day observation window.",
+  expectedOutcome: "Base case projected score of 0.57 over 90-day window.",
+  divergenceNote: "Observed score consistent with base case within confidence bounds.",
+  automaticRecalibration: false,
+});
+
+const validationResult = validateRealityFeedbackHook(feedbackHook);
+```
+
+The feedback hook is reviewed by a human analyst who evaluates whether the divergence warrants a model update, a scenario re-run with revised assumptions, or no action. All decisions about model changes are made by authorized reviewers, never by the system.
+
+<Note>
+Human-environment fusion is decision support. SOIL does not make conclusions about individual people or their activities. All signals in the fusion object are aggregated, sector-pack-governed, and reviewed by a human before informing any organizational action.
+</Note>

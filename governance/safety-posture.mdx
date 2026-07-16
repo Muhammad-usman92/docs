@@ -1,0 +1,119 @@
+---
+title: "SOIL Safety Posture: Decision-Support-Only Guarantee"
+sidebarTitle: "Safety Posture"
+description: "BEL SOIL enforces a decision-support-only safety posture on every output. Understand the guardrails, prohibited behaviors, and mandatory human review requirements."
+---
+
+BEL SOIL is a governed decision-support backend — not a decision-making system. Every output SOIL produces carries an explicit safety posture that tells you, your reviewers, and your downstream systems exactly what that output is permitted to do: inform a human decision, never replace one. Understanding this posture is foundational to integrating SOIL correctly. If your integration treats any SOIL output as a final determination, you are using it outside its governed scope.
+
+## Core Safety Fields
+
+Every SOIL output object — regardless of type, sector, or scenario — contains three mandatory safety fields. These fields are not optional, not configurable, and not suppressible. They are set at construction time and validated at every export boundary.
+
+<AccordionGroup>
+  <Accordion title="decisionSupportOnly: true">
+    This field declares that the output exists solely to inform a human decision. SOIL outputs present analysis, scenario projections, readiness assessments, and structured evidence. They do not render verdicts, determinations, or final judgments of any kind. If `decisionSupportOnly` is absent or `false`, the output is invalid and must not be used.
+  </Accordion>
+
+  <Accordion title="humanReviewRequired: true">
+    No SOIL output may be acted on without a human reviewer examining and accepting it. This field is present on every object — scenario runs, executive assessments, sector pack configs, export packages, and the protected-use status object itself. Automated forwarding of SOIL outputs to enforcement, legal, clinical, or financial systems without human review is a governed violation.
+  </Accordion>
+
+  <Accordion title="approvalStatus: READY_FOR_REVIEW">
+    SOIL outputs are produced in `READY_FOR_REVIEW` posture. This means the output is complete, structured, and ready for your reviewers to act on — it does not mean the output is certified, approved, compliant, or externally validated. No SOIL output ever leaves the system in an approved or certified state. All final approval authority remains with your authorized reviewers.
+  </Accordion>
+</AccordionGroup>
+
+## What SOIL Explicitly Does NOT Do
+
+<Warning>
+  SOIL is expressly prohibited from the following behaviors. These are runtime-enforced restrictions, not guidelines. Any attempt to produce the following outputs will result in a safe failure response.
+
+  - Make legal determinations or legal judgments of any kind
+  - Make medical diagnoses or health determinations
+  - Make employment decisions, credibility scores, or allegation truth scores
+  - Issue compliance-pass certifications
+  - Make disability or eligibility determinations
+  - Issue safety certifications
+  - Provide financial advice or investment recommendations to third parties
+  - Perform automatic recalibration of models or baselines
+  - Perform automatic production model changes
+  - Perform active cross-tenant benchmarking or rankings
+  - Publish cohort data, dashboards, or aggregated population reports
+  - Track or identify individuals
+  - Make autonomous final decisions of any kind
+</Warning>
+
+These restrictions apply across all sector packs, all scenario types, and all output formats. They cannot be bypassed by configuration, API parameters, or runtime flags.
+
+## Guardrail Enforcement
+
+SOIL enforces its safety posture through a set of runtime guardrails that evaluate every input and output before it is returned to your system.
+
+<AccordionGroup>
+  <Accordion title="Identity-Rich Input Rejection">
+    If a workplace condition input contains identity-rich fields — names, employee IDs, biometric markers, or other individual identifiers — SOIL rejects the request immediately. The response is a structured `SoilCompletionSafeFailureResponse` with a sanitized audit event. No partial output is returned.
+  </Accordion>
+
+  <Accordion title="Blocked Sector Pack Safe Failure">
+    If a requested sector pack is not active or is outside the current governed scope, SOIL returns a structured safe failure rather than attempting a partial analysis. This is intentional — SOIL never claims to support a sector it cannot fully govern. The blocked pack failure path is acceptance-tested.
+  </Accordion>
+
+  <Accordion title="Small-Group Data Suppression and Rollup">
+    When workplace data falls below the configured group-size threshold, SOIL suppresses the granular output and rolls it up to an approved higher-level aggregate. This prevents re-identification of individuals from small cohorts. The rollup logic is enforced in `evaluateWorkplaceCompliance`.
+  </Accordion>
+
+  <Accordion title="Prohibited Output Field Blocking">
+    Fields that would constitute legal determinations, credibility scores, allegation truth scores, compliance-pass certifications, or safety certifications are blocked from the output schema. If an internal assembly step attempts to populate a prohibited field, the output is rejected before it reaches your system.
+  </Accordion>
+
+  <Accordion title="GIS Rendering Field Blocking">
+    Map-consumable output objects carry contract-level field restrictions: `mapRenderingIncluded: false`. GIS rendering fields, geocoding output, map tiles, and frontend layer data are not present in any SOIL output. The map-consumable contract is a structured spatial-reference object only.
+  </Accordion>
+</AccordionGroup>
+
+## Safe Failure Guarantee
+
+Any input that would cause SOIL to produce an unsafe, identity-rich, or out-of-scope output is rejected before analysis begins. SOIL returns a `SoilCompletionSafeFailureResponse` — a structured object that tells you what was rejected and why — alongside a `SoilCompletionSanitizedAuditEvent` that records the rejection in your audit trail without capturing the prohibited input content.
+
+You will never receive a partial or degraded unsafe output. The guarantee is binary: either SOIL produces a fully governed output with all safety fields intact, or it produces a safe failure with a clean audit record.
+
+For a full description of safe failure response shapes, rejection reasons, and how to handle them in your integration, see [Safe Failure Handling](/guides/safe-failure).
+
+## Posture Vocabulary
+
+The `approvalStatus` field on every SOIL output uses a controlled vocabulary. Your integration and review workflows should map to these values — do not substitute free-text status labels.
+
+<AccordionGroup>
+  <Accordion title="not_assessed">
+    Analysis has not yet been run for this item. No SOIL output exists for this scope. Use this value in your system to represent items that are in scope but not yet analyzed.
+  </Accordion>
+
+  <Accordion title="planned">
+    Analysis is scheduled but has not yet started. The item is in your analysis queue.
+  </Accordion>
+
+  <Accordion title="in_progress">
+    Analysis is running or is under initial internal review. The output is not yet ready for formal reviewer action.
+  </Accordion>
+
+  <Accordion title="ready_for_review">
+    The output is complete and structured. It is ready for your human reviewers to examine and act on. This is the posture at which all SOIL outputs are delivered.
+  </Accordion>
+
+  <Accordion title="verified_internal">
+    Internal review has been completed at the organizational level. A human reviewer has examined the output and accepted it within your internal governance process. SOIL does not set this value — your review system does.
+  </Accordion>
+
+  <Accordion title="external_validation_required">
+    The output has been reviewed internally but requires external validation before any downstream action may be taken. Route to this posture when your process mandates third-party or regulatory review.
+  </Accordion>
+
+  <Accordion title="requires_review">
+    A gap or unsupported path was identified during analysis. SOIL marked the relevant output with this posture and provided a rejection reason. The output must be reviewed before any action is taken — and the gap must be addressed or formally acknowledged.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  If you need to verify that a SOIL output was consumed appropriately, the Observability Trace Hook records every guardrail evaluation, every blocked field, and every safe failure event associated with a given `correlationId`. Include the trace object in your audit packages to demonstrate governed consumption.
+</Note>

@@ -1,0 +1,150 @@
+---
+title: "Map-Consumable Output Contract for GIS Integration"
+sidebarTitle: "Map Consumable"
+description: "The SOIL map-consumable output provides a structured data contract for GIS integration. It contains location signals and readiness indicators — no rendered maps or tiles."
+---
+
+The map-consumable output is SOIL's structured data contract for location-aware scenario analysis. It packages location signals and readiness indicators derived from a scenario run into a format designed to feed into your own GIS rendering pipeline. It does not render maps, produce map tiles, perform geocoding, or assemble GIS layers — those responsibilities belong to the system that consumes this output. Think of it as a typed, governed handoff object that bridges SOIL's analysis layer and your visualization or spatial-analysis tooling.
+
+<Note>
+`mapRenderingIncluded` is always `false`. SOIL produces a data contract, not rendered maps, map tiles, geocoding results, or GIS layers. Any spatial rendering, tile generation, or layer assembly must be performed by your own GIS pipeline using the data this object provides.
+</Note>
+
+## Map-Consumable Output Fields
+
+The `SoilCompletionMapConsumableOutput` type carries the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `locationSignals` | `LocationSignal[]` | Array of structured location-level signals derived from the scenario run |
+| `readinessIndicatorsByLocation` | `Record<string, number>` | Map of location IDs to their associated readiness indicator scores |
+| `affectedLocationIds` | `string[]` | IDs of all locations flagged as affected by active scenario conditions |
+| `mapRenderingIncluded` | `boolean` | Always `false` — SOIL does not render maps |
+| `prohibitedGisFields` | `string[]` | List of field names that were evaluated and blocked from this output |
+| `schemaVersion` | `string` | Always `map_consumable_output_v1` |
+| `approvalStatus` | `string` | Always `READY_FOR_REVIEW` |
+| `humanReviewRequired` | `boolean` | Always `true` |
+| `decisionSupportOnly` | `boolean` | Always `true` |
+
+Each `LocationSignal` in the `locationSignals` array carries a location ID, signal type, intensity level, and the assumptions associated with that signal. Signals are aggregated — they do not correspond to individual people or individual coordinates.
+
+## Prohibited GIS Fields
+
+SOIL evaluates the map-consumable output at build time and blocks any field that would expose data at a granularity that violates the system's privacy and governance posture. The `prohibitedGisFields` array on the output object records which field names were evaluated and suppressed.
+
+Common categories of prohibited GIS fields include:
+
+- **Individual coordinates** — latitude/longitude or precise address data tied to specific individuals
+- **Identifiable location data** — location descriptors that, in combination with other fields, could re-identify a person
+- **Sub-threshold location aggregates** — location groupings that fall below the small-group suppression threshold
+- **Unapproved spatial identifiers** — location ID formats not registered in the sector pack's approved location schema
+
+<Warning>
+If your integration depends on a field that appears in `prohibitedGisFields`, you must not attempt to reconstruct that data from other output fields. Prohibited fields are blocked at the governance layer and their absence is intentional.
+</Warning>
+
+## Building Map-Consumable Output
+
+Use `buildMapConsumableOutput()` to produce the map-consumable output from a completed scenario run, then validate it with `validateMapConsumableOutput()`.
+
+```typescript
+import {
+  buildMapConsumableOutput,
+  validateMapConsumableOutput,
+} from "functions/src/soil/services/soilCompletion";
+
+const mapOutput = buildMapConsumableOutput({
+  scenarioRunId: "scenario_run_001",
+  tenantId: "tenant_demo",
+  organizationId: "org_demo",
+  sectorPackId: "hbx_workplace_readiness_compliance",
+  locationSignals: [
+    {
+      locationId: "facility_1",
+      signalType: "reported_activity",
+      intensity: "elevated",
+      assumptions: ["Activity is aggregated and source-authorized."],
+    },
+  ],
+  readinessIndicatorsByLocation: {
+    facility_1: 0.54,
+  },
+  affectedLocationIds: ["facility_1"],
+});
+
+const validationResult = validateMapConsumableOutput(mapOutput);
+
+if (!validationResult.ok) {
+  console.error("Map output validation failed:", validationResult.errors);
+}
+```
+
+A validated map-consumable output object looks like this:
+
+```json
+{
+  "scenarioRunId": "scenario_run_001",
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "locationSignals": [
+    {
+      "locationId": "facility_1",
+      "signalType": "reported_activity",
+      "intensity": "elevated",
+      "assumptions": ["Activity is aggregated and source-authorized."]
+    }
+  ],
+  "readinessIndicatorsByLocation": {
+    "facility_1": 0.54
+  },
+  "affectedLocationIds": ["facility_1"],
+  "mapRenderingIncluded": false,
+  "prohibitedGisFields": [],
+  "schemaVersion": "map_consumable_output_v1",
+  "approvalStatus": "READY_FOR_REVIEW",
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true
+}
+```
+
+## Integrating with Your GIS Layer
+
+The map-consumable output is designed as a typed handoff to your own spatial rendering or GIS analysis pipeline. Here is the recommended integration flow:
+
+<Steps>
+  <Step title="Receive the map-consumable output">
+    After a scenario run completes, retrieve the `MapConsumableOutput` object — either directly from `buildMapConsumableOutput()` or from the full sample package via `createSoilCompletionPhase1SamplePackage()`.
+  </Step>
+  <Step title="Validate the output">
+    Always run `validateMapConsumableOutput()` before passing the object to your GIS layer. A validation failure indicates a governance problem that must be resolved before the data is consumed.
+  </Step>
+  <Step title="Check prohibited fields">
+    Inspect the `prohibitedGisFields` array. If it is non-empty, your GIS pipeline must be configured to not request or reconstruct those fields.
+  </Step>
+  <Step title="Map location signals to your spatial schema">
+    Iterate over `locationSignals` and `readinessIndicatorsByLocation`, translating SOIL's location IDs to the spatial identifiers used by your GIS system. SOIL location IDs are logical identifiers — your pipeline is responsible for resolving them to coordinates or geometries.
+  </Step>
+  <Step title="Render in your own pipeline">
+    Pass the translated signals and indicators to your GIS rendering engine. All map tile generation, layer assembly, and geocoding happens in your pipeline, not in SOIL.
+  </Step>
+</Steps>
+
+## Pairing with EOS Environmental Output
+
+The map-consumable output is designed to be produced alongside the EOS Environmental Output (`SoilCompletionEosEnvironmentalOutput`) for location-aware environmental analysis. While the map-consumable output carries location signals and readiness indicators, the EOS Environmental Output provides the environmental operating snapshot — atmospheric, physical, or operational conditions at the location level — that enriches spatial analysis.
+
+```typescript
+import {
+  buildMapConsumableOutput,
+  buildEosEnvironmentalOutput,
+} from "functions/src/soil/services/soilCompletion";
+
+// Produce both outputs from the same scenario run context
+const mapOutput = buildMapConsumableOutput({ scenarioRunId, ...locationParams });
+const eosOutput = buildEosEnvironmentalOutput({ scenarioRunId, ...environmentalParams });
+
+// Forward both to your GIS and environmental analysis pipelines
+```
+
+When your GIS pipeline renders location-level readiness indicators, the EOS output gives human reviewers the environmental context to interpret why a particular location is showing the signals it is.

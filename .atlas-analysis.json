@@ -1,0 +1,130 @@
+{
+  "projectType": "api-service",
+  "projectName": "BEL SOIL",
+  "projectDescription": "A governed decision-support backend that runs sector-based scenario analysis and organizational readiness assessments, producing human-review-required outputs for workplace, financial, environmental, and executive use cases.",
+  "theme": "luma",
+  "primaryColor": "#1A6B4A",
+  "lightColor": "#E8F5EE",
+  "darkColor": "#0D3D28",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "core-concepts"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/scenario-runs",
+              "guides/sector-packs",
+              "guides/workplace-compliance",
+              "guides/financial-scenarios",
+              "guides/environmental-output",
+              "guides/safe-failure"
+            ]
+          },
+          {
+            "group": "Output Objects",
+            "pages": [
+              "outputs/overview",
+              "outputs/executive-assessment",
+              "outputs/readiness-horizon",
+              "outputs/map-consumable",
+              "outputs/human-environment-fusion",
+              "outputs/observability-trace"
+            ]
+          },
+          {
+            "group": "Safety & Governance",
+            "pages": [
+              "governance/safety-posture",
+              "governance/protected-use",
+              "governance/approval-workflow"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/overview",
+              "api/health",
+              "api/sessions",
+              "api/scenario-runs"
+            ]
+          },
+          {
+            "group": "SDK Reference",
+            "pages": [
+              "sdk/builders",
+              "sdk/validators",
+              "sdk/type-contracts"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Sector-based scenario engine with SectorPackConfig v2",
+    "HBX Workplace Readiness & Compliance with small-group suppression",
+    "Capital/Public Finance and Revenue/Commercial sector packs",
+    "EOS Environmental Intelligence output contracts",
+    "Human-Environment Fusion object",
+    "OCM-10 handoff schema",
+    "Readiness Horizon projection with base/upside/downside/stress cases",
+    "Projected-vs-observed comparison",
+    "Executive Readiness Assessment with evidence, assumption, and confidence ledgers",
+    "Observability Trace Hook",
+    "Protected-Use Status Hook",
+    "Safe failure responses with sanitized audit events",
+    "Decision-support-only safety posture with human review required"
+  ],
+  "publicApiSurface": [
+    "GET /health",
+    "POST /createSoilSession",
+    "GET /getSoilSession",
+    "POST /addBaselineHubReference",
+    "POST /createScenarioRun",
+    "GET /getScenarioRun",
+    "buildDefaultSoilCompletionSectorPackConfig",
+    "buildCapitalPublicFinancePackConfig",
+    "buildRevenueCommercialPackConfig",
+    "buildFinancialReadinessScenario",
+    "buildEosEnvironmentalOutput",
+    "createSoilCompletionScenarioRun",
+    "createSoilCompletionScenarioRunFromRequest",
+    "buildSoilCompletionSafeFailureResponse",
+    "evaluateWorkplaceCompliance",
+    "buildMapConsumableOutput",
+    "buildHumanEnvironmentFusion",
+    "buildOcm10Handoff",
+    "buildRealityFeedbackHook",
+    "buildBenchmarkReadyOutput",
+    "buildReadinessHorizonProjection",
+    "buildProjectedVsObserved",
+    "buildExecutiveReadinessAssessment",
+    "buildObservabilityTrace",
+    "buildProtectedUseStatus",
+    "buildAdminHubReadableSoilOutput",
+    "buildExportReadyObjectPackage",
+    "createSoilCompletionPhase1SamplePackage",
+    "validateSoilCompletionSectorPackConfig",
+    "validateSoilCompletionScenarioRunRequest",
+    "validateEosEnvironmentalConditionInput",
+    "validateReadinessHorizonProjection",
+    "validateExecutiveReadinessAssessment",
+    "validateObservabilityTraceHook",
+    "validateProtectedUseStatus"
+  ]
+}

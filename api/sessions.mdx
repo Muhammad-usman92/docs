@@ -1,0 +1,211 @@
+---
+title: "SOIL Session Management: Create and Retrieve Sessions"
+sidebarTitle: "Sessions"
+description: "POST /createSoilSession creates a session context for scenario analysis. GET /getSoilSession retrieves an existing session by ID."
+---
+
+A SOIL session is the top-level context object that binds your tenant, organization, and program identity to a unit of scenario analysis work. You must create a session before you can submit any scenario runs — the `soilSessionId` returned by `createSoilSession` is a required field on every `createScenarioRun` request. Sessions are immutable once created; you retrieve them by ID when you need to inspect their state or pass their identifier to downstream calls.
+
+---
+
+## POST /createSoilSession
+
+Creates a new SOIL session that establishes the tenant, organization, and optional program context for a set of related scenario runs.
+
+### Request
+
+```bash
+curl -X POST http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/createSoilSession \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenantId": "tenant_demo",
+    "organizationId": "org_demo",
+    "programId": "program_demo",
+    "correlationId": "corr_create_session_001",
+    "auditReference": "audit_create_session_001"
+  }'
+```
+
+<ParamField body="tenantId" type="string" required>
+  Your tenant identifier. This value scopes all session and scenario data to your tenant within the BEL SOIL platform.
+</ParamField>
+
+<ParamField body="organizationId" type="string" required>
+  The organization within the tenant that owns this session. Used for routing, access control, and audit attribution.
+</ParamField>
+
+<ParamField body="programId" type="string">
+  The specific program or initiative this session belongs to. Optional — include it when you want to group scenario runs by program for downstream reporting or audit purposes.
+</ParamField>
+
+<ParamField body="correlationId" type="string">
+  Your correlation reference for tracing this session creation back to an event in your own system. Echoed in all response and audit objects associated with this session.
+</ParamField>
+
+<ParamField body="auditReference" type="string">
+  Your audit system reference. Included in all sanitized audit events generated for this session so you can locate them in your audit log.
+</ParamField>
+
+### Response
+
+```json
+{
+  "ok": true,
+  "soilSession": {
+    "soilSessionId": "soil_session_abc123",
+    "tenantId": "tenant_demo",
+    "organizationId": "org_demo",
+    "programId": "program_demo",
+    "status": "active",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+<ResponseField name="ok" type="boolean" required>
+  `true` when the session was created successfully.
+</ResponseField>
+
+<ResponseField name="soilSession.soilSessionId" type="string" required>
+  The unique identifier for this session. Store this value — you must pass it as `soilSessionId` in every subsequent `createScenarioRun` request that belongs to this session.
+</ResponseField>
+
+<ResponseField name="soilSession.tenantId" type="string" required>
+  The tenant identifier provided in the request, confirmed in the response.
+</ResponseField>
+
+<ResponseField name="soilSession.organizationId" type="string" required>
+  The organization identifier provided in the request, confirmed in the response.
+</ResponseField>
+
+<ResponseField name="soilSession.programId" type="string">
+  The program identifier provided in the request, if supplied.
+</ResponseField>
+
+<ResponseField name="soilSession.status" type="string" required>
+  The current status of the session. Returns `"active"` immediately after creation.
+</ResponseField>
+
+<ResponseField name="soilSession.createdAt" type="string" required>
+  ISO 8601 UTC timestamp of when the session was created.
+</ResponseField>
+
+---
+
+## GET /getSoilSession
+
+Retrieves an existing SOIL session by its identifier. Use this endpoint to confirm session state or to look up session metadata before submitting a scenario run.
+
+### Request
+
+Pass the session identifier as a query string parameter:
+
+```bash
+curl "http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/getSoilSession?soilSessionId=soil_session_abc123"
+```
+
+<ParamField query="soilSessionId" type="string" required>
+  The unique identifier of the session to retrieve. This is the `soilSessionId` returned by `createSoilSession`.
+</ParamField>
+
+### Response
+
+```json
+{
+  "ok": true,
+  "soilSession": {
+    "soilSessionId": "soil_session_abc123",
+    "tenantId": "tenant_demo",
+    "organizationId": "org_demo",
+    "programId": "program_demo",
+    "status": "active",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+<ResponseField name="ok" type="boolean" required>
+  `true` when the session was found and returned successfully.
+</ResponseField>
+
+<ResponseField name="soilSession.soilSessionId" type="string" required>
+  The unique identifier of the retrieved session.
+</ResponseField>
+
+<ResponseField name="soilSession.tenantId" type="string" required>
+  The tenant that owns this session.
+</ResponseField>
+
+<ResponseField name="soilSession.organizationId" type="string" required>
+  The organization within the tenant that owns this session.
+</ResponseField>
+
+<ResponseField name="soilSession.programId" type="string">
+  The program identifier associated with the session, if one was provided at creation time.
+</ResponseField>
+
+<ResponseField name="soilSession.status" type="string" required>
+  The current status of the session.
+</ResponseField>
+
+<ResponseField name="soilSession.createdAt" type="string" required>
+  ISO 8601 UTC timestamp of when the session was originally created.
+</ResponseField>
+
+---
+
+## POST /addBaselineHubReference
+
+Adds a baseline hub reference field to an existing session. This associates a future Baseline Hub record with the session so that baseline-aligned scenario runs can be traced back to an authoritative baseline source.
+
+### Request
+
+```bash
+curl -X POST http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/addBaselineHubReference \
+  -H "Content-Type: application/json" \
+  -d '{
+    "soilSessionId": "soil_session_abc123",
+    "baselineHubReference": "baseline_hub_ref_xyz789"
+  }'
+```
+
+<ParamField body="soilSessionId" type="string" required>
+  The identifier of the session to attach the baseline hub reference to. The session must already exist.
+</ParamField>
+
+<ParamField body="baselineHubReference" type="string" required>
+  The reference string for the Baseline Hub record you want to associate with this session. This value is stored on the session and echoed in relevant downstream outputs.
+</ParamField>
+
+<Note>
+  The `baselineHubReference` field is **reserved for future Baseline Hub integration**. It is accepted and stored by the current API, but active Baseline Hub linking, validation against an external baseline registry, and baseline-driven scenario constraints are not yet implemented. Include this field now if your workflow tracks baseline identifiers, so that sessions are ready for Baseline Hub integration when it becomes available.
+</Note>
+
+### Response
+
+```json
+{
+  "ok": true,
+  "soilSession": {
+    "soilSessionId": "soil_session_abc123",
+    "baselineHubReference": "baseline_hub_ref_xyz789",
+    "status": "active"
+  }
+}
+```
+
+<ResponseField name="ok" type="boolean" required>
+  `true` when the baseline hub reference was successfully added to the session.
+</ResponseField>
+
+<ResponseField name="soilSession.soilSessionId" type="string" required>
+  The identifier of the session that was updated.
+</ResponseField>
+
+<ResponseField name="soilSession.baselineHubReference" type="string" required>
+  The baseline hub reference value now stored on the session, confirmed in the response.
+</ResponseField>
+
+<ResponseField name="soilSession.status" type="string" required>
+  The current status of the session after the update.
+</ResponseField>

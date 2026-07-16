@@ -1,0 +1,165 @@
+---
+title: "BEL SOIL REST API Overview and Base URL"
+sidebarTitle: "Overview"
+description: "Overview of the BEL SOIL REST API — base URL, request format, response structure, common error codes, and governance requirements."
+---
+
+The BEL SOIL REST API gives you programmatic access to the governed decision-support backend for sector-based scenario analysis. You interact with it over HTTPS using standard JSON requests and receive structured JSON responses that carry both output data and governance metadata. Every response includes explicit safety posture fields so that downstream consumers always know the review status and permitted uses of any result.
+
+---
+
+## Base URL
+
+All endpoints are served under a single base URL. Append the endpoint path directly to this base.
+
+<Note>
+  The base URL below points to the **local Firebase emulator**. You must have the emulator running before making any requests. Replace this URL with your production base URL when you move to a deployed environment.
+</Note>
+
+```
+http://127.0.0.1:5001/demo-bel-soil-m1/us-central1
+```
+
+---
+
+## Request Format
+
+All mutating requests (`POST`) must send a JSON body and include the `Content-Type: application/json` header.
+
+```bash
+Content-Type: application/json
+```
+
+Every mutating request body must include the following tenant and organization identifiers so the API can route and audit the request correctly:
+
+| Field            | Type   | Required on | Description                                      |
+| ---------------- | ------ | ----------- | ------------------------------------------------ |
+| `tenantId`       | string | all POSTs   | Your tenant identifier                           |
+| `organizationId` | string | all POSTs   | The organization within the tenant               |
+
+`GET` requests pass parameters as query string values — no request body is used.
+
+---
+
+## Response Format
+
+Every response from the BEL SOIL API follows a standard envelope. The top-level `ok` field tells you immediately whether the request succeeded or was rejected.
+
+### Success response
+
+When `ok` is `true`, the response contains the primary resource object alongside governance metadata:
+
+```json
+{
+  "ok": true,
+  "scenarioRun": {
+    "scenarioId": "scenario_request_valid",
+    "approvalStatus": "READY_FOR_REVIEW",
+    "humanReviewRequired": true,
+    "decisionSupportOnly": true
+  },
+  "warnings": []
+}
+```
+
+### Failure / rejection response
+
+When `ok` is `false`, the response contains a structured rejection package. No unsafe output is generated from rejected input — the `safeFallbackOutput` and `sanitizedAuditEvent` fields replace the primary resource object:
+
+```json
+{
+  "ok": false,
+  "outputStatus": "rejected",
+  "rejectionReasons": ["unknown_condition:unknown_condition"],
+  "safeFallbackOutput": {
+    "outputStatus": "rejected",
+    "decisionSupportOnly": true,
+    "humanReviewRequired": true,
+    "prohibitedUses": [
+      "No unsafe SOIL output generated from rejected input.",
+      "No final decision may be made from rejected input."
+    ],
+    "auditReference": "audit_failure",
+    "correlationId": "corr_failure"
+  },
+  "sanitizedAuditEvent": {
+    "auditEventId": "sanitized_audit_failure",
+    "eventType": "soil_completion_failure_path_rejected",
+    "status": "failure",
+    "sanitized": true,
+    "reasonCodes": ["unknown_condition:unknown_condition"],
+    "auditReference": "audit_failure",
+    "correlationId": "corr_failure"
+  }
+}
+```
+
+| Field                | Type    | Description                                                                           |
+| -------------------- | ------- | ------------------------------------------------------------------------------------- |
+| `ok`                 | boolean | `true` for success, `false` for failure or rejection                                  |
+| `outputStatus`       | string  | Present on failure — always `"rejected"`                                              |
+| `rejectionReasons`   | array   | List of rejection reason codes (see [Error Responses](#error-responses) below)        |
+| `safeFallbackOutput` | object  | Sanitized, prohibition-labelled fallback — safe to store and audit                    |
+| `sanitizedAuditEvent`| object  | Audit-safe event record with reason codes, stripped of any sensitive input data       |
+
+---
+
+## Required Governance Fields
+
+<Warning>
+  All `POST` requests that create or modify scenario data **must** include both `humanReviewRequired: true` and `decisionSupportOnly: true`. The API validates these fields on every applicable request. Any request that omits them, sets them to `false`, or falsifies their values is rejected immediately and a sanitized audit event is generated.
+</Warning>
+
+These fields enforce the safety posture of the BEL SOIL platform:
+
+| Field                 | Type    | Required value | Purpose                                                                              |
+| --------------------- | ------- | -------------- | ------------------------------------------------------------------------------------ |
+| `humanReviewRequired` | boolean | `true`         | Declares that all output requires human review before any action is taken            |
+| `decisionSupportOnly` | boolean | `true`         | Declares that output is decision support only — no automated or final decision use   |
+
+The API never produces output that permits autonomous final decisions, legal determinations, medical diagnosis, or automated employment actions.
+
+---
+
+## Endpoints Summary
+
+| Method | Path                      | Purpose                                              |
+| ------ | ------------------------- | ---------------------------------------------------- |
+| GET    | `/health`                 | Service health check                                 |
+| POST   | `/createSoilSession`      | Create a new SOIL session                            |
+| GET    | `/getSoilSession`         | Retrieve an existing SOIL session by ID              |
+| POST   | `/addBaselineHubReference`| Add a baseline hub reference to an existing session  |
+| POST   | `/createScenarioRun`      | Create and run a sector-based scenario               |
+| GET    | `/getScenarioRun`         | Retrieve a scenario run result by ID                 |
+
+---
+
+## Error Responses
+
+When a request is rejected, the `rejectionReasons` array contains one or more reason codes. The table below describes the most common codes:
+
+| Reason Code                        | Meaning                                                                                                          |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `unknown_condition`                | A condition object in the request references a `conditionId` that is not recognized by the active sector pack    |
+| `unsupported_sector_family`        | The `sectorPackId` or `sectorPackVersion` combination is not supported or not active                             |
+| `blocked_pack_status`              | The referenced sector pack has a blocked or inactive status and cannot be used for new scenario runs             |
+| `identity_rich_input_rejected`     | The request contains input that the system determined to be identity-rich; the run was blocked before processing |
+
+All rejection responses include a `safeFallbackOutput` and a `sanitizedAuditEvent` so you always have an auditable record regardless of whether the request succeeded.
+
+---
+
+## Idempotency
+
+You can include `correlationId` and `auditReference` fields in any `POST` request body to tie API activity back to your own systems:
+
+| Field            | Type   | Purpose                                                                                |
+| ---------------- | ------ | -------------------------------------------------------------------------------------- |
+| `correlationId`  | string | Your correlation reference — passed through to all response and audit objects           |
+| `auditReference` | string | Your audit system reference — present in all sanitized audit events for traceability   |
+
+<Tip>
+  Set `correlationId` to a value that is unique per logical operation in your system. This makes it straightforward to match any SOIL response or audit event back to the originating request when you review logs.
+</Tip>
+
+Both fields are echoed back in every success response object and in every `sanitizedAuditEvent` on the failure path, giving you end-to-end traceability without needing to parse internal SOIL identifiers.

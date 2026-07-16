@@ -1,0 +1,155 @@
+---
+title: "Running Financial Readiness Scenarios in BEL SOIL"
+sidebarTitle: "Financial Scenarios"
+description: "Use BEL SOIL's Capital/Public Finance and Revenue/Commercial sector packs to model financial readiness scenarios with governed output objects."
+---
+
+BEL SOIL's financial scenario analysis lets you model how conditions affect an organization's financial readiness posture across two domains: **capital and public finance** and **revenue and commercial performance**. Both are governed by dedicated sector packs that enforce readiness-only output posture — producing structured projections, confidence levels, and approval-ready output objects for internal review. Financial scenario outputs are decision-support artifacts. They are never financial advice, investment guidance, or compliance certifications.
+
+---
+
+## Capital and Public Finance Scenarios
+
+The `buildCapitalPublicFinancePackConfig()` function produces a `SoilCompletionSectorPackConfig` scoped to capital planning and public finance readiness. It configures the allowed conditions, allowed events, and prohibited output fields for capital-domain scenario runs.
+
+Financial readiness scenarios in this domain carry the following structure:
+
+| Field | Type | Description |
+|---|---|---|
+| `scenarioType` | `string` | Classifies the scenario (e.g., `"capital_readiness"`, `"public_finance_review"`). |
+| `baselineAssumptions` | `string[]` | Assumptions underpinning the baseline financial position. |
+| `conditions` | `array` | The financial conditions driving the scenario. |
+| `projectedOutcomes` | `object` | Structured projections across base, upside, downside, and stress cases. |
+| `confidence` | `number` | Confidence score from `0.0` to `1.0` for the projected outcomes. |
+| `approvalStatus` | `string` | Always `"READY_FOR_REVIEW"`. Final approval is not granted by SOIL. |
+
+---
+
+## Revenue and Commercial Scenarios
+
+The `buildRevenueCommercialPackConfig()` function produces a sector pack scoped to revenue and commercial performance analysis. Use it alongside `buildFinancialReadinessScenario()` to construct a governed `SoilCompletionFinancialReadinessScenario` object.
+
+Key fields in `SoilCompletionFinancialReadinessScenario`:
+
+| Field | Type | Description |
+|---|---|---|
+| `scenarioId` | `string` | Unique identifier for this financial readiness scenario. |
+| `sectorPackId` | `string` | The sector pack driving the scenario (e.g., `"revenue_commercial"`). |
+| `scenarioType` | `string` | Scenario classification for this domain. |
+| `baselineAssumptions` | `string[]` | Baseline assumptions for the scenario. |
+| `conditions` | `array` | Financial conditions modeled in this scenario. |
+| `projectedOutcomes` | `object` | Projected outcomes across readiness horizon cases. |
+| `confidence` | `number` | Confidence level for the projection. |
+| `decisionSupportOnly` | `boolean` | Always `true`. |
+| `humanReviewRequired` | `boolean` | Always `true`. |
+| `approvalStatus` | `string` | Always `"READY_FOR_REVIEW"`. |
+
+---
+
+## Scenario Conditions for Finance
+
+Financial conditions follow the same structure as other SOIL conditions but are scoped to financial domain signals. Key attributes to configure:
+
+| Attribute | Description |
+|---|---|
+| `intensity` | Signal intensity: `"low"`, `"moderate"`, `"elevated"`, or `"high"`. Maps to the severity of the financial pressure being modeled. |
+| `durationDays` | The number of days over which the condition persists. Used to scope projection windows. |
+| `affectedMissionAreas` | The mission areas or service lines affected by the financial condition (e.g., `"capital_operations"`, `"revenue_delivery"`). |
+
+Use conditions with precise intensity and duration values to produce tighter confidence intervals in your projected outcomes.
+
+---
+
+## Financial Scenario Output Fields
+
+| Output Field | Description |
+|---|---|
+| `projectedOutcomes.base` | Expected outcome under normal operating assumptions. |
+| `projectedOutcomes.upside` | Favorable outcome projection. |
+| `projectedOutcomes.downside` | Adverse outcome projection. |
+| `projectedOutcomes.stress` | Extreme adverse case for stress-testing readiness posture. |
+| `confidence` | Numeric confidence score for the projection set. |
+| `approvalStatus` | `"READY_FOR_REVIEW"` — all financial outputs await human review. |
+| `decisionSupportOnly` | `true` — output informs review, does not replace it. |
+| `humanReviewRequired` | `true` — mandatory before any downstream use. |
+| `assumptions` | The assumption set governing this output. |
+| `limitations` | Known limitations on input data or projection accuracy. |
+
+---
+
+## Building a Financial Readiness Scenario
+
+Use `buildFinancialReadinessScenario()` to assemble a governed financial scenario object directly:
+
+```typescript
+import {
+  buildRevenueCommercialPackConfig,
+  buildFinancialReadinessScenario,
+  validateSoilCompletionSectorPackConfig,
+} from "@bel/soil-completion";
+
+// Build and validate the sector pack
+const packConfig = buildRevenueCommercialPackConfig();
+const validation = validateSoilCompletionSectorPackConfig(packConfig);
+
+if (!validation.valid) {
+  throw new Error("Invalid sector pack config: " + validation.errors.join(", "));
+}
+
+// Build the financial readiness scenario
+const financialScenario = buildFinancialReadinessScenario({
+  scenarioId: "fin_scenario_revenue_q2",
+  sectorPackId: packConfig.sectorPackId,
+  scenarioType: "revenue_readiness",
+  baselineAssumptions: [
+    "Current revenue pipeline reflects Q1 actuals.",
+    "No material contract changes assumed in projection window.",
+  ],
+  conditions: [
+    {
+      conditionId: "revenue_shortfall_risk",
+      intensity: "elevated",
+      durationDays: 90,
+      affectedMissionAreas: ["revenue_delivery"],
+      state: "active",
+      trend: "stable",
+      confidence: 0.68,
+      assumptions: ["Shortfall risk is modeled from aggregate pipeline signals."],
+      limitations: ["Projection does not account for unanticipated contract awards."],
+    },
+  ],
+  correlationId: "corr_fin_q2_001",
+  auditReference: "audit_fin_q2_001",
+});
+
+console.log("Financial scenario:", financialScenario.scenarioId);
+console.log("Approval status:", financialScenario.approvalStatus);
+console.log("Confidence:", financialScenario.confidence);
+```
+
+---
+
+## Approval Posture
+
+All financial scenario outputs carry `approvalStatus: "READY_FOR_REVIEW"`. SOIL does not advance financial outputs to a final-approval or certified state. The approval posture vocabulary is deliberately constrained:
+
+- `not_assessed`
+- `planned`
+- `in_progress`
+- `ready_for_review`
+- `verified_internal`
+- `external_validation_required`
+- `requires_review`
+
+Terms like `certified`, `authorized`, or `compliance-pass` are blocked from appearing in financial output fields.
+
+<Warning>
+  **Financial scenario outputs have the following prohibited uses:**
+
+  - They may not be used as investment advice or to make investment decisions.
+  - They may not be used to approve, deny, or prioritize funding allocations.
+  - They may not be used to certify financial compliance or pass/fail any regulatory standard.
+  - They may not be used as a substitute for qualified financial, legal, or actuarial review.
+
+  SOIL financial output is for internal readiness review only. Every financial scenario requires human review before any downstream action is taken.
+</Warning>

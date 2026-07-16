@@ -1,0 +1,230 @@
+---
+title: "BEL SOIL TypeScript Type Contracts Reference"
+sidebarTitle: "Type Contracts"
+description: "TypeScript type contracts exported by the BEL SOIL SDK — the complete list of model types, schema versions, and constant groups available in your integration."
+---
+
+The SOIL SDK exports TypeScript types for every output object in the pipeline. Use these types to build type-safe integrations — they describe the exact shape of every object produced by a builder and consumed by a validator. Import from `functions/src/soil/models` for types and from `functions/src/soil/constants` for schema version strings and sector family identifiers.
+
+## Import Paths
+
+```typescript
+// Types
+import type {
+  SoilCompletionScenarioRun,
+  SoilCompletionSectorPackConfig,
+  SoilCompletionExecutiveReadinessAssessment,
+  SoilCompletionExportReadyObjectPackage,
+} from 'functions/src/soil/models';
+
+// Constants
+import {
+  SOIL_COMPLETION_SCHEMA_VERSIONS,
+  SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES,
+} from 'functions/src/soil/constants';
+```
+
+You can also import everything through the top-level barrel:
+
+```typescript
+import type { SoilCompletionScenarioRun } from 'functions/src/soil/models';
+import { SOIL_COMPLETION_SCHEMA_VERSIONS } from 'functions/src/soil/constants';
+// or from the root barrel:
+import { SOIL_COMPLETION_SCHEMA_VERSIONS } from 'functions/src/soil';
+```
+
+---
+
+## Core Types
+
+<CardGroup cols={2}>
+  <Card title="SoilCompletionSectorPackConfig" icon="layer-group">
+    The v2 sector pack configuration object. Governs which sector family is active, what guardrails apply (`decisionSupportOnly`, `humanReviewRequired`), and the current approval posture.
+  </Card>
+  <Card title="SoilCompletionScenarioRunRequest" icon="file-import">
+    The intake request object for a scenario run. Carries the tenant/org/program identifiers, sector pack reference, conditions, events, and governance declarations before the run is assembled.
+  </Card>
+  <Card title="SoilCompletionScenarioRun" icon="play">
+    The assembled scenario run object. The primary pipeline container — carries conditions, events, state transitions, spike ledger/history, and all governance metadata.
+  </Card>
+  <Card title="SoilCompletionSafeFailureResponse" icon="shield-xmark">
+    The safe failure envelope produced when a request is rejected. Contains `decisionSupportOnly: true`, `humanReviewRequired: true`, prohibited-use declarations, and audit reference fields.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="SoilCompletionSanitizedAuditEvent" icon="scroll">
+    The sanitized audit event attached to a failure response. Records the rejection reason codes, event type, audit reference, and correlation ID without emitting any unsafe content.
+  </Card>
+  <Card title="SoilCompletionWorkplaceConditionInput" icon="briefcase">
+    An input condition object for workplace scenarios. Carries condition ID, category, intensity, duration, affected departments/units/locations, confidence score, assumptions, and limitations.
+  </Card>
+  <Card title="SoilCompletionWorkplaceComplianceOutput" icon="clipboard-check">
+    The workplace compliance output produced by `evaluateWorkplaceCompliance`. Includes suppression and rollup results, multi-signal convergence flag, required disclaimers, and governance fields.
+  </Card>
+  <Card title="SoilCompletionFinancialReadinessScenario" icon="chart-line">
+    A financial readiness scenario object for the Capital/Public Finance or Revenue/Commercial sector families. Carries scenario metadata, readiness state, and `approvalStatus: READY_FOR_REVIEW`.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="SoilCompletionEnvironmentalConditionInput" icon="leaf">
+    An environmental condition input for EOS analysis. Carries condition ID, category, intensity, confidence score, and contract-only location signal references — no GIS or geocoding fields.
+  </Card>
+  <Card title="SoilCompletionEosEnvironmentalOutput" icon="globe">
+    The EOS environmental output object. A contract-only environmental intelligence record — no GIS rendering, geocoding, map tiles, or frontend layers. Carries `approvalStatus: READY_FOR_REVIEW`.
+  </Card>
+  <Card title="SoilCompletionMapConsumableOutput" icon="map">
+    The map-consumable data contract. A structured output ready for a mapping consumer layer — `mapRenderingIncluded` is always `false`. Contains no GIS rendering, tiles, or geocoding.
+  </Card>
+  <Card title="SoilCompletionHumanEnvironmentFusion" icon="merge">
+    The human-environment fusion object. Combines human-context signals with EOS environmental signals into a single governed cross-domain readiness record.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="SoilCompletionOcm10Handoff" icon="arrow-right-arrow-left">
+    The OCM-10 handoff object. Carries the schema-versioned reference (`ocm10_handoff_v1`) and fusion object ID needed to pass SOIL outputs into OCM-10-compatible downstream workflows.
+  </Card>
+  <Card title="SoilCompletionRealityFeedbackHook" icon="rotate">
+    The reality feedback hook. Records feedback for model review. `automaticRecalibration` is always `false` — no autonomous model updates are permitted.
+  </Card>
+  <Card title="SoilCompletionBenchmarkReadyOutput" icon="chart-bar">
+    The benchmark-ready output. Carries benchmark metadata. `activeBenchmarking` is always `false` — no active cross-tenant aggregation, ranking, or cohort publication.
+  </Card>
+  <Card title="SoilCompletionReadinessHorizonProjection" icon="calendar-days">
+    The readiness horizon projection. A four-case forward range: `baseCase`, `upsideCase`, `downsideCase`, and `stressCase`.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="SoilCompletionProjectedVsObserved" icon="scale-balanced">
+    The projected-vs-observed comparison object. Records divergence between projected and observed readiness values. `automaticModelChange` is always `false`.
+  </Card>
+  <Card title="SoilCompletionLedger" icon="book">
+    The base ledger type, shared by Evidence, Assumption, and Confidence ledgers. Each ledger variant carries typed entries recording the reasoning, assumptions, and confidence levels behind an executive assessment.
+  </Card>
+  <Card title="SoilCompletionExecutiveReadinessAssessment" icon="star">
+    The executive readiness assessment — the highest-level summary object in the pipeline. Carries the three ledgers (Evidence, Assumption, Confidence) and `approvalStatus: READY_FOR_REVIEW`.
+  </Card>
+  <Card title="SoilCompletionAdminHubReadableSoilOutput" icon="building">
+    The Admin Hub-readable output. A formatted summary object for Admin Hub consumption, referencing the executive assessment, observability trace, and protected-use status.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="SoilCompletionExportReadyObjectPackage" icon="box-archive">
+    The export-ready object package. The final governed envelope for a complete pipeline run — bundles all objects into one exportable container with `approvalStatus: READY_FOR_REVIEW`.
+  </Card>
+  <Card title="SoilCompletionObservabilityTraceHook" icon="eye">
+    The observability trace hook. Links all objects in a pipeline run to a single audit reference and correlation ID for traceability and audit purposes.
+  </Card>
+  <Card title="SoilCompletionProtectedUseStatus" icon="lock">
+    The protected-use status hook. A governance marker recording the protected-use declaration attached to a pipeline run.
+  </Card>
+  <Card title="SoilCompletionPhase1SamplePackage" icon="flask">
+    The complete Phase 1 sample package type — the return type of `createSoilCompletionPhase1SamplePackage()`. Contains all pipeline objects as named properties, populated with synthetic data.
+  </Card>
+</CardGroup>
+
+---
+
+## Schema Version Constants
+
+`SOIL_COMPLETION_SCHEMA_VERSIONS` is a constant object exported from `functions/src/soil/constants`. Use these string values to verify schema version fields on any SOIL object.
+
+```typescript
+import { SOIL_COMPLETION_SCHEMA_VERSIONS } from 'functions/src/soil/constants';
+
+// Verify a received object before processing
+if (sectorPackConfig.schemaVersion !== SOIL_COMPLETION_SCHEMA_VERSIONS.sector_pack_config_v2) {
+  throw new Error('Unexpected SectorPackConfig schema version');
+}
+```
+
+**Available Keys**
+
+| Key | Value String | Applies To |
+|---|---|---|
+| `sector_pack_config_v2` | `"sector_pack_config_v2"` | `SoilCompletionSectorPackConfig` |
+| `scenario_run_v2` | `"scenario_run_v2"` | `SoilCompletionScenarioRun` |
+| `workplace_condition_input_v1` | `"workplace_condition_input_v1"` | `SoilCompletionWorkplaceConditionInput` |
+| `workplace_compliance_output_v1` | `"workplace_compliance_output_v1"` | `SoilCompletionWorkplaceComplianceOutput` |
+| `readiness_horizon_projection_v1` | `"readiness_horizon_projection_v1"` | `SoilCompletionReadinessHorizonProjection` |
+| `projected_vs_observed_v1` | `"projected_vs_observed_v1"` | `SoilCompletionProjectedVsObserved` |
+| `executive_readiness_assessment_v1` | `"executive_readiness_assessment_v1"` | `SoilCompletionExecutiveReadinessAssessment` |
+| `map_consumable_output_v1` | `"map_consumable_output_v1"` | `SoilCompletionMapConsumableOutput` |
+| `human_environment_fusion_v1` | `"human_environment_fusion_v1"` | `SoilCompletionHumanEnvironmentFusion` |
+| `ocm10_handoff_v1` | `"ocm10_handoff_v1"` | `SoilCompletionOcm10Handoff` |
+| `reality_feedback_hook_v1` | `"reality_feedback_hook_v1"` | `SoilCompletionRealityFeedbackHook` |
+| `benchmark_ready_output_v1` | `"benchmark_ready_output_v1"` | `SoilCompletionBenchmarkReadyOutput` |
+| `observability_trace_hook_v1` | `"observability_trace_hook_v1"` | `SoilCompletionObservabilityTraceHook` |
+| `protected_use_status_v1` | `"protected_use_status_v1"` | `SoilCompletionProtectedUseStatus` |
+
+<Note>
+  Schema versions follow the pattern `{object_name}_v{N}`. Sector pack config and scenario run are at `v2` — all other contracts are currently at `v1`. When BEL publishes a schema update, the version key value will change and validators will enforce the new version.
+</Note>
+
+---
+
+## Supported Sector Families
+
+`SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES` lists the active sector pack IDs recognized by the SOIL backend.
+
+```typescript
+import { SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES } from 'functions/src/soil/constants';
+
+// Use in request validation
+if (!SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES.active.includes(request.sectorPackId)) {
+  // Reject — not an active sector family
+}
+```
+
+**Active Sector Pack IDs**
+
+| Sector Pack ID | Builder Function | Status |
+|---|---|---|
+| `hbx_workplace_readiness_compliance` | `buildDefaultSoilCompletionSectorPackConfig()` | Active |
+| `capital_public_finance` | `buildCapitalPublicFinancePackConfig()` | Active |
+| `revenue_commercial` | `buildRevenueCommercialPackConfig()` | Active |
+
+**Requires Review**
+
+| Sector Pack ID | Status | Notes |
+|---|---|---|
+| `aviation` / HBX Aero | `requires_review` | No active Aviation/HBX Aero code path is present in the current SOIL backend. The aviation sector family is explicitly marked `requires_review` and cannot be used in active scenario runs until a BEL-provided backend path is confirmed. |
+
+<Warning>
+  Do not pass `aviation` or any HBX Aero sector pack ID in a live scenario run request. `validateSoilCompletionScenarioRunRequest` will reject it with a `requires_review` status code. This gap is intentionally documented and will be resolved in a future milestone.
+</Warning>
+
+---
+
+## Approval Posture Constants
+
+All SOIL objects that carry an `approvalStatus` field must use a value from the governed posture vocabulary. Prohibited language — `certified`, `authorized`, `compliance_pass`, or unsupported external-validation claims — will cause validation to fail.
+
+```typescript
+import { SOIL_COMPLETION_APPROVAL_POSTURE } from 'functions/src/soil/constants';
+
+// Example: check that an object is in a review-ready state
+if (assessment.approvalStatus === SOIL_COMPLETION_APPROVAL_POSTURE.ready_for_review) {
+  // Safe to route for human review
+}
+```
+
+**Allowed Posture Values**
+
+| Constant Key | Value | Meaning |
+|---|---|---|
+| `not_assessed` | `"not_assessed"` | No assessment has been run against this object yet. |
+| `planned` | `"planned"` | Assessment is planned but has not started. |
+| `in_progress` | `"in_progress"` | Assessment is currently underway. |
+| `ready_for_review` | `"ready_for_review"` | Object is complete and ready for human review. **Default posture for all SOIL builder outputs.** |
+| `verified_internal` | `"verified_internal"` | Object has passed internal verification. Does not constitute external validation or certification. |
+| `external_validation_required` | `"external_validation_required"` | External validation is required before this object can be used for its intended purpose. |
+| `requires_review` | `"requires_review"` | Object or sector family requires additional review before use (for example, the aviation sector family). |
+
+<Note>
+  All objects produced by SOIL builders default to `approvalStatus: ready_for_review`. BEL final approval is not claimed at this posture level — `ready_for_review` means the object is ready for a human reviewer to evaluate, not that it has been approved or certified.
+</Note>

@@ -1,0 +1,210 @@
+---
+title: "Running Scenario Analysis with BEL SOIL"
+sidebarTitle: "Scenario Runs"
+description: "Learn how to create and retrieve SOIL scenario runs — from assembling conditions and events to reading structured readiness output."
+---
+
+A **scenario run** is the primary unit of analysis in BEL SOIL. It bundles a set of conditions, events, sector configuration, and governance metadata into a single governed request that SOIL evaluates and returns as structured readiness output. You use scenario runs whenever you need to model how a set of conditions affects an organization's readiness posture — whether for workplace compliance review, capital planning, or environmental risk analysis.
+
+Every scenario run is decision-support only. It does not produce final determinations and always requires human review before any downstream action is taken.
+
+---
+
+## Assembling a Scenario Run Request
+
+A valid scenario run request must include all of the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `scenarioId` | `string` | A unique identifier for this scenario. |
+| `soilSessionId` | `string` | The SOIL session this run belongs to. |
+| `tenantId` | `string` | The tenant scope for the request. |
+| `organizationId` | `string` | The organization being assessed. |
+| `programId` | `string` | The program context for the run. |
+| `sectorPackId` | `string` | The sector pack driving analysis logic. |
+| `sectorPackVersion` | `string` | Must be `"v2"`. |
+| `conditions[]` | `array` | The conditions being modeled (see below). |
+| `events[]` | `array` | Events contributing to the scenario. |
+| `isSynthetic` | `boolean` | Whether this run uses synthetic/test data. |
+| `humanReviewRequired` | `boolean` | Must be `true`. |
+| `decisionSupportOnly` | `boolean` | Must be `true`. |
+| `correlationId` | `string` | Trace identifier for audit and observability. |
+| `auditReference` | `string` | Reference key for audit event linkage. |
+| `assumptions[]` | `array` | Request-level assumptions governing interpretation. |
+
+### Example Request Body
+
+The following example assembles a scenario run using the `hbx_workplace_readiness_compliance` sector pack:
+
+```json
+{
+  "scenarioId": "scenario_request_valid",
+  "soilSessionId": "soil_session_request_valid",
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "programId": "program_demo",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "sectorPackVersion": "v2",
+  "conditions": [
+    {
+      "conditionId": "eeo_complaint_activity",
+      "conditionVersion": "v1",
+      "category": "reported_activity",
+      "intensity": "elevated",
+      "durationDays": 120,
+      "affectedDepartments": ["department_operations"],
+      "affectedUnits": ["unit_north"],
+      "affectedLocations": ["facility_1"],
+      "affectedMissionAreas": ["service_delivery"],
+      "state": "active",
+      "trend": "worsening",
+      "confidence": 0.71,
+      "assumptions": ["Activity is aggregated and source-authorized."],
+      "limitations": ["Reported activity is not a finding."]
+    }
+  ],
+  "events": [
+    {
+      "eventId": "workload_pressure_spike",
+      "eventType": "operational_pressure",
+      "eventVersion": "v1",
+      "intensity": "elevated",
+      "durationDays": 45,
+      "affectedEntityIds": ["department_operations"],
+      "startState": "stable",
+      "endState": "review_required"
+    }
+  ],
+  "isSynthetic": true,
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true,
+  "correlationId": "corr_request_valid",
+  "auditReference": "audit_request_valid",
+  "assumptions": ["Request-level scenario creation proof."]
+}
+```
+
+---
+
+## Accepted Response
+
+When SOIL accepts your request, it returns a structured response with `ok: true`, the created `scenarioRun` object, and a `warnings` array:
+
+```json
+{
+  "ok": true,
+  "scenarioRun": {
+    "scenarioId": "scenario_request_valid",
+    "sectorPackId": "hbx_workplace_readiness_compliance",
+    "sectorPackVersion": "v2",
+    "inputValidationStatus": "accepted",
+    "isSynthetic": true,
+    "humanReviewRequired": true,
+    "decisionSupportOnly": true,
+    "approvalStatus": "READY_FOR_REVIEW"
+  },
+  "warnings": []
+}
+```
+
+If your request fails validation, SOIL returns a safe failure response with `ok: false` and structured rejection reasons. See [Safe Failure Responses](/guides/safe-failure) for details.
+
+---
+
+## Using `createSoilCompletionScenarioRunFromRequest`
+
+The `createSoilCompletionScenarioRunFromRequest` SDK function is the primary entry point for creating a scenario run programmatically. It accepts a `SoilCompletionScenarioRunRequest` object, validates it, and returns the governed scenario run result.
+
+```typescript
+import { createSoilCompletionScenarioRunFromRequest } from "@bel/soil-completion";
+
+const result = await createSoilCompletionScenarioRunFromRequest({
+  scenarioId: "scenario_request_valid",
+  soilSessionId: "soil_session_request_valid",
+  tenantId: "tenant_demo",
+  organizationId: "org_demo",
+  programId: "program_demo",
+  sectorPackId: "hbx_workplace_readiness_compliance",
+  sectorPackVersion: "v2",
+  conditions: [
+    {
+      conditionId: "eeo_complaint_activity",
+      conditionVersion: "v1",
+      category: "reported_activity",
+      intensity: "elevated",
+      durationDays: 120,
+      affectedDepartments: ["department_operations"],
+      affectedUnits: ["unit_north"],
+      affectedLocations: ["facility_1"],
+      affectedMissionAreas: ["service_delivery"],
+      state: "active",
+      trend: "worsening",
+      confidence: 0.71,
+      assumptions: ["Activity is aggregated and source-authorized."],
+      limitations: ["Reported activity is not a finding."],
+    },
+  ],
+  events: [
+    {
+      eventId: "workload_pressure_spike",
+      eventType: "operational_pressure",
+      eventVersion: "v1",
+      intensity: "elevated",
+      durationDays: 45,
+      affectedEntityIds: ["department_operations"],
+      startState: "stable",
+      endState: "review_required",
+    },
+  ],
+  isSynthetic: true,
+  humanReviewRequired: true,
+  decisionSupportOnly: true,
+  correlationId: "corr_request_valid",
+  auditReference: "audit_request_valid",
+  assumptions: ["Request-level scenario creation proof."],
+});
+
+if (result.ok) {
+  console.log("Scenario run accepted:", result.scenarioRun);
+} else {
+  console.error("Scenario run rejected:", result.rejectionReasons);
+}
+```
+
+---
+
+## Scenario State Fields
+
+Every accepted scenario run carries a set of governance state fields that describe its current standing:
+
+| Field | Value | Meaning |
+|---|---|---|
+| `inputValidationStatus` | `"accepted"` | All conditions and events passed validation. |
+| `inputValidationStatus` | `"rejected"` | One or more inputs failed validation — a safe failure response is returned instead. |
+| `approvalStatus` | `"READY_FOR_REVIEW"` | The run is staged for human review. No run exits SOIL with a final-approval status. |
+| `humanReviewRequired` | `true` | Human review is mandatory before any downstream use. |
+| `decisionSupportOnly` | `true` | Output may inform — but never replace — human judgment. |
+
+These fields are enforced by SOIL and cannot be overridden by the caller. Attempting to submit a request with either `humanReviewRequired` or `decisionSupportOnly` set to `false` will trigger immediate rejection.
+
+---
+
+## Spike Ledger and Event History
+
+Every scenario run accumulates a **spike ledger** alongside its event history. The spike ledger records each event that contributed to a condition spike during the run — capturing the event identifier, event type, intensity, affected entities, and state transition (`startState` → `endState`).
+
+This ledger exists for audit trail purposes. It gives reviewers a complete, ordered record of what events drove scenario state changes, making it straightforward to trace readiness posture shifts back to their contributing signals during human review.
+
+You can access the spike ledger and event history through the full Phase 1 sample package:
+
+```typescript
+import { createSoilCompletionPhase1SamplePackage } from "@bel/soil-completion";
+
+const sample = createSoilCompletionPhase1SamplePackage();
+
+console.log("Scenario run:", sample.scenarioRun);
+```
+
+<Note>
+  Both `humanReviewRequired` and `decisionSupportOnly` must be `true` on every scenario run request. SOIL will reject any request that attempts to set either field to `false` and return a structured safe failure response with rejection reason codes.
+</Note>

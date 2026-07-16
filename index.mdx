@@ -1,20 +1,65 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "BEL SOIL: Governed Decision-Support for Organizational Readiness"
+sidebarTitle: "Home"
+description: "BEL SOIL is a governed backend for sector-based scenario analysis and organizational readiness assessments. All outputs are decision-support only and require human review."
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+BEL SOIL gives your team a structured backend for running scenario-based readiness analysis across workplace, financial, and environmental domains. Every output is explicitly scoped as decision support — no autonomous determinations, no certifications, no automatic model changes. Human review is always required before acting on any SOIL output.
 
-<Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Make your first scenario run request in minutes
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/core-concepts">
+    Understand sessions, sector packs, and scenario runs
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore every endpoint with request and response examples
+  </Card>
+  <Card title="SDK Reference" icon="layer-group" href="/sdk/builders">
+    Use the TypeScript builder and validator functions directly
+  </Card>
+</CardGroup>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+## What BEL SOIL Does
+
+BEL SOIL runs governed scenario analysis against a configurable set of sector packs. You describe conditions and events in your organization; SOIL assembles a structured output package that your reviewers can act on.
+
+<CardGroup cols={3}>
+  <Card title="Scenario Engine" icon="gears">
+    Model workplace, financial, and environmental conditions as structured input events
+  </Card>
+  <Card title="Sector Packs" icon="cubes">
+    Target analysis to HBX Workplace, Capital/Public Finance, or Revenue/Commercial domains
+  </Card>
+  <Card title="Readiness Outputs" icon="chart-line">
+    Receive Readiness Horizon projections, Executive Assessments, and ledger objects
+  </Card>
+  <Card title="Safe Failure" icon="shield-check">
+    Unsafe inputs are rejected with a sanitized audit event — never produce unsafe output
+  </Card>
+  <Card title="Compliance Guardrails" icon="lock">
+    Small-group suppression, protected-use status, and decision-support-only posture enforced at every layer
+  </Card>
+  <Card title="Observability" icon="eye">
+    Every run produces an Observability Trace Hook for audit and review workflows
+  </Card>
+</CardGroup>
+
+## Get Started in Three Steps
+
+<Steps>
+  <Step title="Create a SOIL Session">
+    Call `POST /createSoilSession` with your `tenantId` and `organizationId` to establish a session context. You'll receive a `soilSessionId` to use in all subsequent requests.
+  </Step>
+  <Step title="Run a Scenario">
+    Call `POST /createScenarioRun` with your session ID, the target sector pack, and the conditions and events you want to model. SOIL validates the input and returns a structured scenario run object.
+  </Step>
+  <Step title="Review the Output">
+    Retrieve results with `GET /getScenarioRun`. All outputs carry `decisionSupportOnly: true` and `humanReviewRequired: true`. Route them to your review workflow before taking any action.
+  </Step>
+</Steps>
+
+<Note>
+  BEL SOIL outputs are always marked `READY_FOR_REVIEW`. Final approval and any downstream action remain with your authorized reviewers — never with the system itself.
+</Note>

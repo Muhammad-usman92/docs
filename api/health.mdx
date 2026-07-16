@@ -1,0 +1,69 @@
+---
+title: "GET /health — BEL SOIL Service Health Check"
+sidebarTitle: "GET /health"
+description: "GET /health returns the current health and module version of the BEL SOIL service. Use it to verify connectivity before making scenario requests."
+---
+
+The `/health` endpoint returns the current operational status and module version of the BEL SOIL service. Call it first to confirm that the emulator (or deployed service) is reachable and responding before you attempt to create sessions or submit scenario runs. It requires no authentication, no request body, and no query parameters.
+
+---
+
+## Request
+
+Send a plain `GET` request to the endpoint — no headers, body, or query string required.
+
+```bash
+curl http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/health
+```
+
+---
+
+## Response
+
+A healthy service returns HTTP `200` with the following JSON body:
+
+```json
+{
+  "ok": true,
+  "status": "ok",
+  "belHealthVersion": "BEL-Health-v1",
+  "module": "BEL SOIL",
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
+<ResponseField name="ok" type="boolean" required>
+  `true` when the service is healthy and ready to accept requests. `false` if the service is running but is reporting a degraded or unhealthy state.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Human-readable status string. Returns `"ok"` on a healthy response.
+</ResponseField>
+
+<ResponseField name="belHealthVersion" type="string" required>
+  The BEL Health schema version implemented by this service. Currently `"BEL-Health-v1"`.
+</ResponseField>
+
+<ResponseField name="module" type="string" required>
+  The name of the module responding to the health check. Always `"BEL SOIL"` for this service.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string" required>
+  ISO 8601 UTC timestamp of when the health response was generated. Use this to verify the service clock and confirm you are receiving a live response.
+</ResponseField>
+
+---
+
+## Troubleshooting
+
+<Warning>
+  If you receive a **connection refused** error or the request times out, the local emulator is not running. Start it before making any API calls.
+</Warning>
+
+| Symptom                             | Likely cause                                                                                     | Resolution                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `Connection refused` on port 5001   | The Firebase emulator is not running                                                             | Start the emulator with `firebase emulators:start` from the project root                    |
+| `Connection refused` on another port| You are targeting the wrong port                                                                 | Confirm the emulator Functions port — the default is `5001`                                 |
+| HTTP `404` on `/health`             | The base URL path segment is incorrect                                                           | Verify the full URL includes `demo-bel-soil-m1/us-central1` before `/health`                |
+| `ok: false` in the response body    | The service started but is reporting a degraded state                                            | Check emulator logs for initialization errors; restart the emulator if needed               |
+| Stale `timestamp` in response       | You may be hitting a cached or frozen process                                                    | Restart the emulator and confirm a fresh timestamp on the next health call                  |

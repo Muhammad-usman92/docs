@@ -1,0 +1,103 @@
+---
+title: "Workplace Readiness and Compliance Analysis with SOIL"
+sidebarTitle: "Workplace Compliance"
+description: "Run SOIL workplace readiness and compliance assessments, including privacy-safe small-group suppression and multi-signal rollup."
+---
+
+The **HBX Workplace Readiness & Compliance** sector pack gives you a governed framework for analyzing workplace conditions, compliance posture, and reported operational pressures across departments, units, and locations. It is purpose-built for scenarios where sensitive workplace signals must be aggregated safely — applying automatic suppression when group sizes fall below the disclosure threshold, rolling output up to an approved higher level, and attaching mandatory disclaimers to all results.
+
+Workplace compliance outputs are decision-support only. They never produce individual-level findings, employment determinations, or compliance-pass certifications.
+
+---
+
+## Workplace Input Structure
+
+Each workplace condition you include in a scenario run is described by a `SoilCompletionWorkplaceConditionInput` object. The fields are:
+
+| Field | Type | Description |
+|---|---|---|
+| `conditionId` | `string` | Identifier for the condition type (e.g., `"eeo_complaint_activity"`). |
+| `affectedDepartments` | `string[]` | Departments affected by this condition. |
+| `affectedUnits` | `string[]` | Units affected by this condition. |
+| `affectedLocations` | `string[]` | Facility or location identifiers. |
+| `affectedMissionAreas` | `string[]` | Mission areas affected. |
+| `intensity` | `string` | Signal intensity level: `"low"`, `"moderate"`, `"elevated"`, or `"high"`. |
+| `durationDays` | `number` | How many days the condition spans. Supports up to 120-day windows. |
+| `state` | `string` | Current state of the condition: `"active"`, `"resolved"`, `"monitoring"`. |
+| `trend` | `string` | Direction of change: `"improving"`, `"stable"`, or `"worsening"`. |
+| `confidence` | `number` | Confidence score from `0.0` to `1.0`. |
+| `assumptions` | `string[]` | Assumptions governing interpretation of this condition. |
+| `limitations` | `string[]` | Known limitations or caveats on the input data. |
+
+---
+
+## Small-Group Suppression
+
+When the affected group in a workplace condition falls below the defined suppression threshold, SOIL automatically suppresses granular output and rolls up results to a safe aggregated level. No below-threshold group data surfaces in the output. This protects individuals from being identified through inference on small group counts.
+
+Suppression runs automatically — you do not need to configure it. The `evaluateWorkplaceCompliance` function handles suppression and rollup as part of its execution:
+
+```typescript
+import { evaluateWorkplaceCompliance } from "@bel/soil-completion";
+
+const complianceResult = evaluateWorkplaceCompliance({
+  conditionId: "eeo_complaint_activity",
+  affectedDepartments: ["department_operations"],
+  affectedUnits: ["unit_north"],
+  affectedLocations: ["facility_1"],
+  affectedMissionAreas: ["service_delivery"],
+  intensity: "elevated",
+  durationDays: 120,
+  state: "active",
+  trend: "worsening",
+  confidence: 0.71,
+  assumptions: ["Activity is aggregated and source-authorized."],
+  limitations: ["Reported activity is not a finding."],
+});
+
+console.log("Suppression applied:", complianceResult.suppressionApplied);
+console.log("Rollup level:", complianceResult.rollupLevel);
+console.log("Disclaimers:", complianceResult.disclaimers);
+```
+
+---
+
+## Compliance Output Fields
+
+`evaluateWorkplaceCompliance` returns a `SoilCompletionWorkplaceComplianceOutput` object. The key fields are:
+
+| Field | Type | Description |
+|---|---|---|
+| `rollupLevel` | `string` | The aggregation level at which output is reported (e.g., department, unit, facility). |
+| `suppressionApplied` | `boolean` | `true` if below-threshold suppression was triggered for any group. |
+| `suppressedGroups` | `object` | Describes which groups were suppressed and at what aggregation threshold. No granular data is included. |
+| `disclaimers` | `string[]` | Required disclaimer text automatically appended to every workplace output. |
+| `multiSignalConvergenceFlag` | `boolean` | `true` when multiple independent signals converge on the same condition area, indicating a stronger readiness signal for reviewer attention. |
+
+---
+
+## Required Disclaimers
+
+SOIL automatically appends required disclaimers to every workplace compliance output. You do not need to construct them manually. They will always be present in the `disclaimers` array and must be preserved in any downstream display or handoff:
+
+- *Reported activity is not a finding.*
+- *SOIL does not make employment, misconduct, or eligibility determinations.*
+- *This output is decision support only and requires human review before any action is taken.*
+
+These disclaimers are non-negotiable. SOIL enforces their presence as part of the output contract.
+
+---
+
+## 120-Day Compliance Window
+
+Workplace compliance inputs support an extended duration of up to **120 days** via the `durationDays` field. This allows you to model compliance conditions that span multi-month operational periods — such as a sustained EEO complaint activity window or a prolonged workload pressure event — while keeping the output within a single governed scenario run.
+
+Set `durationDays` to any value up to `120` on any `SoilCompletionWorkplaceConditionInput` to enable extended-window analysis.
+
+<Note>
+  Workplace outputs never contain individual-level identifiers. Suppression rules run automatically on every evaluation. You do not need to implement suppression logic in your integration — SOIL handles it at the output layer.
+</Note>
+
+<Warning>
+  Identity-rich workplace inputs are rejected. If your input contains individual identifiers — such as names, employee IDs, or other personally identifying attributes — SOIL will not process the request. It returns a safe failure response with the rejection reason `identity_rich_input`. Strip all individual identifiers before submitting workplace conditions.
+</Warning>

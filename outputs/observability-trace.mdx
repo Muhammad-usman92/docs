@@ -1,0 +1,212 @@
+---
+title: "Observability Trace Hook: Audit Trail for Every SOIL Run"
+sidebarTitle: "Observability Trace"
+description: "Every BEL SOIL scenario run produces an Observability Trace Hook — a structured audit record capturing inputs, outputs, guardrail evaluations, and timing."
+---
+
+Every BEL SOIL scenario run — whether it succeeds, is rejected, or fails safe — produces an Observability Trace Hook. The trace exists to give you and your review team a complete, structured audit record of what happened during a run: what inputs were received, which guardrails were evaluated, whether suppression was applied, what output status was produced, and when all of this occurred. The trace is not an afterthought — it is a first-class output object, produced by the same governed builder-and-validator pattern as every other SOIL output. It is the primary record you use when investigating a run in a review workflow, escalation process, or external audit.
+
+## Trace Hook Fields
+
+The `SoilCompletionObservabilityTraceHook` type carries the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `traceId` | `string` | Unique identifier for this trace record |
+| `correlationId` | `string` | Links the trace to the originating request — use this to cross-reference with your own system logs |
+| `auditReference` | `string` | Ties the trace to your external audit system reference |
+| `scenarioRunId` | `string` | ID of the scenario run this trace covers |
+| `tenantId` | `string` | Tenant identifier for the run |
+| `organizationId` | `string` | Organization identifier for the run |
+| `sectorPackId` | `string` | Sector pack that governed the run |
+| `inputValidationStatus` | `string` | Outcome of input validation: `accepted`, `rejected`, or `failed` |
+| `outputStatus` | `string` | Outcome of the run: `produced`, `rejected`, `suppressed`, or `failed` |
+| `guardrailsApplied` | `string[]` | List of guardrail identifiers evaluated during the run |
+| `suppressionApplied` | `boolean` | `true` if small-group suppression or another suppression rule was applied to any output |
+| `humanReviewRequired` | `boolean` | Always `true` |
+| `decisionSupportOnly` | `boolean` | Always `true` |
+| `schemaVersion` | `string` | Always `observability_trace_hook_v1` |
+| `timestamp` | `string` | ISO 8601 timestamp of when the trace was produced |
+
+## Guardrail Evaluation Record
+
+The `guardrailsApplied` array records every guardrail that was evaluated during the run. This gives reviewers and auditors a transparent record of which governance checks were active, regardless of whether they blocked or passed the run.
+
+Common guardrails recorded in the trace include:
+
+| Guardrail | Description |
+|---|---|
+| `small_group_suppression` | Evaluated whether any workplace output group fell below the minimum threshold — suppression applied if triggered |
+| `identity_rich_input_rejection` | Evaluated whether the input contained identity-rich fields that SOIL is not permitted to process |
+| `prohibited_field_blocking` | Evaluated whether any requested or inferred output field was on the prohibited-fields list |
+| `unknown_condition_rejection` | Evaluated whether any condition ID in the request is unrecognized by the active sector pack |
+| `blocked_pack_status` | Evaluated whether the sector pack's status permits scenario runs |
+| `decision_support_enforcement` | Confirmed that all output objects carry `decisionSupportOnly: true` and `humanReviewRequired: true` |
+
+When `suppressionApplied` is `true`, the trace records that suppression was triggered and applied — but it does not record the suppressed data itself. The trace is a governance record, not a data recovery mechanism.
+
+## Building and Validating the Trace
+
+Use `buildObservabilityTrace()` to produce the trace object at the end of a run, then validate it with `validateObservabilityTraceHook()`.
+
+```typescript
+import {
+  buildObservabilityTrace,
+  validateObservabilityTraceHook,
+} from "functions/src/soil/services/soilCompletion";
+
+const trace = buildObservabilityTrace({
+  scenarioRunId: "scenario_run_001",
+  tenantId: "tenant_demo",
+  organizationId: "org_demo",
+  sectorPackId: "hbx_workplace_readiness_compliance",
+  correlationId: "corr_request_valid",
+  auditReference: "audit_request_valid",
+  inputValidationStatus: "accepted",
+  outputStatus: "produced",
+  guardrailsApplied: [
+    "small_group_suppression",
+    "identity_rich_input_rejection",
+    "prohibited_field_blocking",
+    "decision_support_enforcement",
+  ],
+  suppressionApplied: false,
+});
+
+const validationResult = validateObservabilityTraceHook(trace);
+
+if (!validationResult.ok) {
+  console.error("Trace validation failed:", validationResult.errors);
+}
+```
+
+A validated Observability Trace Hook looks like this:
+
+```json
+{
+  "traceId": "trace_scenario_run_001",
+  "correlationId": "corr_request_valid",
+  "auditReference": "audit_request_valid",
+  "scenarioRunId": "scenario_run_001",
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "inputValidationStatus": "accepted",
+  "outputStatus": "produced",
+  "guardrailsApplied": [
+    "small_group_suppression",
+    "identity_rich_input_rejection",
+    "prohibited_field_blocking",
+    "decision_support_enforcement"
+  ],
+  "suppressionApplied": false,
+  "schemaVersion": "observability_trace_hook_v1",
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true,
+  "timestamp": "2024-11-01T14:32:00.000Z"
+}
+```
+
+## Protected-Use Status Hook
+
+The `SoilCompletionProtectedUseStatus` is a companion object to the Observability Trace. While the trace records what happened during the run, the Protected-Use Status governs what the outputs from that run may and may not be used for. Together, the two objects give you a complete governance record: the trace tells you about the run, and the protected-use status tells you the permitted envelope for using its outputs.
+
+Key fields in `SoilCompletionProtectedUseStatus`:
+
+| Field | Type | Description |
+|---|---|---|
+| `permittedUses` | `string[]` | Explicit list of permitted use cases for this run's outputs |
+| `prohibitedUses` | `string[]` | Explicit list of uses that are prohibited for this run's outputs |
+| `useStatusVersion` | `string` | Version identifier for the use status record |
+| `schemaVersion` | `string` | Always `protected_use_status_v1` |
+
+Use `buildProtectedUseStatus()` to produce the status object and `validateProtectedUseStatus()` to validate it:
+
+```typescript
+import {
+  buildProtectedUseStatus,
+  validateProtectedUseStatus,
+} from "functions/src/soil/services/soilCompletion";
+
+const protectedUseStatus = buildProtectedUseStatus({
+  scenarioRunId: "scenario_run_001",
+  tenantId: "tenant_demo",
+  permittedUses: [
+    "Human review of scenario readiness findings.",
+    "Program planning and organizational readiness assessment support.",
+    "Structured comparison against prior projections by authorized reviewers.",
+  ],
+  prohibitedUses: [
+    "No automated employment action may be taken from this output.",
+    "No compliance certification or safety certification may be issued from this output.",
+    "No final decision may be made without human review.",
+  ],
+  useStatusVersion: "v1",
+});
+
+const validationResult = validateProtectedUseStatus(protectedUseStatus);
+```
+
+## Using Traces in Review Workflows
+
+The Observability Trace Hook is the starting point for any review or investigation workflow. Here is how to use it effectively:
+
+<Steps>
+  <Step title="Locate the trace by correlationId">
+    Every trace carries the `correlationId` from the original scenario run request. Use this field to cross-reference the trace with your own system logs, request records, or event stream.
+  </Step>
+  <Step title="Check inputValidationStatus and outputStatus">
+    If `inputValidationStatus` is `rejected`, the run was rejected before any output was produced. If `outputStatus` is `rejected` or `failed`, review the `guardrailsApplied` array to understand which guardrail triggered the rejection.
+  </Step>
+  <Step title="Review guardrailsApplied">
+    The `guardrailsApplied` array tells you exactly which governance checks ran. If a guardrail you expected to see is missing, that may indicate a configuration issue worth flagging to your system administrator.
+  </Step>
+  <Step title="Check suppressionApplied">
+    If `suppressionApplied` is `true`, at least one output was suppressed during the run. Review the workplace compliance output and map-consumable output for rollup indicators showing where suppression occurred.
+  </Step>
+  <Step title="Link to your external audit system">
+    Use `auditReference` to tie the trace to your external audit or compliance management system. This field is passed through from the original request and preserved verbatim in the trace.
+  </Step>
+</Steps>
+
+## Benchmark-Ready Output
+
+`SoilCompletionBenchmarkReadyOutput` provides structured metadata that makes a scenario run's outputs available for future benchmarking analysis. Importantly, it does not perform active benchmarking — it prepares data for benchmarking in a way that a human reviewer can later authorize and configure.
+
+Key governance fields:
+
+| Field | Value | Meaning |
+|---|---|---|
+| `activeBenchmarking` | `false` | No live cross-tenant benchmarking is performed |
+| `rankingEnabled` | `false` | No rankings, scores, or comparative positioning are produced |
+
+Use `buildBenchmarkReadyOutput()` to produce the benchmark metadata object:
+
+```typescript
+import {
+  buildBenchmarkReadyOutput,
+  validateBenchmarkReadyOutput,
+} from "functions/src/soil/services/soilCompletion";
+
+const benchmarkOutput = buildBenchmarkReadyOutput({
+  scenarioRunId: "scenario_run_001",
+  tenantId: "tenant_demo",
+  organizationId: "org_demo",
+  sectorPackId: "hbx_workplace_readiness_compliance",
+  benchmarkMetadata: {
+    sectorCategory: "workplace_readiness",
+    projectionWindowDays: 90,
+    readinessScoreAtRun: 0.57,
+  },
+  activeBenchmarking: false,
+  rankingEnabled: false,
+});
+
+const validationResult = validateBenchmarkReadyOutput(benchmarkOutput);
+```
+
+The benchmark-ready output is stored alongside other run outputs and is available for review when an authorized party decides to configure a benchmarking analysis. No cross-tenant aggregation, cohort publication, or ranking is triggered automatically.
+
+<Note>
+The Observability Trace Hook is produced for every run — including failed runs, rejected runs, and runs that trigger safe-failure responses. You always have a trace record regardless of whether the run produced any analysis output. On a rejected or failed run, the trace is often the only structured output produced.
+</Note>

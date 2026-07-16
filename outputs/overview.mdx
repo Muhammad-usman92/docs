@@ -1,0 +1,82 @@
+---
+title: "BEL SOIL Output Objects: Complete Reference Overview"
+sidebarTitle: "Overview"
+description: "Every object produced by a BEL SOIL scenario run, including their schema versions, builder functions, and governance fields."
+---
+
+Every BEL SOIL scenario run produces a structured package of output objects. Each object carries a declared schema version, a dedicated builder function, and a paired validator. All output objects — without exception — include the governance fields `decisionSupportOnly: true`, `humanReviewRequired: true`, and `approvalStatus: READY_FOR_REVIEW`. These fields are set by the SOIL runtime and cannot be overridden by callers.
+
+## Output Object Catalogue
+
+The table below lists every output object produced by a SOIL scenario run, its schema version constant, and its purpose in the analysis package.
+
+| Output Object | Schema Version | Purpose |
+|---|---|---|
+| `SectorPackConfig` | `sector_pack_config_v2` | Governs the analysis domain — sector, pack ID, and permitted condition types |
+| `ScenarioRun` | `scenario_run_v2` | Core scenario execution result, including input validation status and run metadata |
+| `WorkplaceComplianceOutput` | `workplace_compliance_output_v1` | Privacy-safe workplace readiness rollup with small-group suppression applied |
+| `EosEnvironmentalOutput` | `v1` (implied) | Environmental operating snapshot paired to the scenario run |
+| `MapConsumableOutput` | `map_consumable_output_v1` | GIS-ready data contract containing location signals and readiness indicators — no rendering |
+| `HumanEnvironmentFusion` | `human_environment_fusion_v1` | Merged human-activity and environmental-condition signals producing a combined readiness signal |
+| `OCM10Handoff` | `ocm10_handoff_v1` | Organizational change management handoff object, linked to the fusion result |
+| `RealityFeedbackHook` | `reality_feedback_hook_v1` | Observed-vs-projected calibration record — automatic recalibration is always blocked |
+| `BenchmarkReadyOutput` | `benchmark_ready_output_v1` | Benchmark metadata for later structured review — active ranking is always disabled |
+| `ReadinessHorizonProjection` | `readiness_horizon_projection_v1` | Forward-looking range projection across base, upside, downside, and stress cases |
+| `ProjectedVsObserved` | `projected_vs_observed_v1` | Structured comparison of a prior projection against observed outcomes |
+| `ExecutiveReadinessAssessment` | `executive_readiness_assessment_v1` | Executive summary with Evidence, Assumption, and Confidence ledgers |
+| `ObservabilityTraceHook` | `observability_trace_hook_v1` | Full audit trail for every run, including guardrail evaluations and suppression flags |
+| `ProtectedUseStatus` | `protected_use_status_v1` | Governs permitted and prohibited uses of outputs for this run |
+
+## Full Sample Package
+
+`createSoilCompletionPhase1SamplePackage()` generates every object listed above in a single call. It is the canonical way to produce a complete, acceptance-tested output package for integration testing and review workflows.
+
+```typescript
+import { createSoilCompletionPhase1SamplePackage } from "functions/src/soil/services/soilCompletion";
+
+const samplePackage = createSoilCompletionPhase1SamplePackage();
+
+// samplePackage includes:
+// sectorPackConfig, scenarioRun, workplaceOutput,
+// mapConsumableOutput, humanEnvironmentFusion, ocm10Handoff,
+// realityFeedbackHook, benchmarkReadyOutput,
+// readinessHorizonProjection, projectedVsObserved,
+// executiveReadinessAssessment, observabilityTrace,
+// protectedUseStatus
+```
+
+The sample package mirrors the same output shape your integration will receive from a live scenario run. Every object in the package is fully validated and carries the required governance fields.
+
+## Common Governance Fields
+
+Every output object produced by SOIL includes the following three governance fields, regardless of object type or scenario outcome:
+
+| Field | Value | Meaning |
+|---|---|---|
+| `decisionSupportOnly` | `true` | Output is structured decision support. It does not constitute a legal, medical, compliance, employment, or safety determination. |
+| `humanReviewRequired` | `true` | A qualified human reviewer must evaluate this output before it informs any consequential decision. |
+| `approvalStatus` | `READY_FOR_REVIEW` | The output is complete and staged for human review. It has not been approved, certified, or authorized. |
+
+<Note>
+These three fields are set by the SOIL runtime. They are not configurable by callers and cannot be removed from any output object.
+</Note>
+
+## Key Object Reference Pages
+
+<CardGroup cols={2}>
+  <Card title="Executive Assessment" icon="file-lines" href="/outputs/executive-assessment">
+    The Executive Readiness Assessment consolidates scenario findings into a reviewable summary with Evidence, Assumption, and Confidence ledgers.
+  </Card>
+  <Card title="Readiness Horizon" icon="chart-line" href="/outputs/readiness-horizon">
+    Forward-looking range projection across base, upside, downside, and stress cases.
+  </Card>
+  <Card title="Map Consumable" icon="map" href="/outputs/map-consumable">
+    GIS data contract providing location signals and readiness indicators for your own rendering pipeline.
+  </Card>
+  <Card title="Human-Environment Fusion" icon="layer-group" href="/outputs/human-environment-fusion">
+    Merged human-activity and environmental-condition signals with OCM-10 handoff and reality feedback.
+  </Card>
+  <Card title="Observability Trace" icon="magnifying-glass" href="/outputs/observability-trace">
+    Full audit trail for every SOIL run, including guardrail evaluations and protected-use status.
+  </Card>
+</CardGroup>

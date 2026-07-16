@@ -1,0 +1,107 @@
+---
+title: "Configuring Sector Packs for SOIL Analysis"
+sidebarTitle: "Sector Packs"
+description: "Sector packs define the analysis domain for SOIL scenario runs. Learn how to configure and validate SectorPackConfig v2 for each supported sector."
+---
+
+A **sector pack** tells SOIL which analysis domain to apply to a scenario run. It defines the allowed conditions, allowed events, prohibited output fields, and governance guardrails for a specific sector context. Without a valid sector pack, SOIL cannot scope or constrain the analysis — every scenario run must reference an active, validated sector pack at version `v2`.
+
+Sector packs are not just configuration objects. They are the enforcement layer that ensures analysis stays within its approved domain and that no prohibited outputs surface in a given sector context.
+
+---
+
+## Available Sector Packs
+
+<CardGroup cols={3}>
+  <Card title="hbx_workplace_readiness_compliance" icon="building">
+    Workplace readiness, compliance posture, and suppression-safe aggregation. Supports small-group suppression, multi-signal rollup, and 120-day compliance windows. Used for EEO and operational pressure scenarios.
+  </Card>
+  <Card title="capital_public_finance" icon="landmark">
+    Capital planning and public finance readiness scenarios. Models baseline assumptions, projected outcomes, and confidence levels for finance readiness review.
+  </Card>
+  <Card title="revenue_commercial" icon="chart-line">
+    Revenue and commercial performance scenario analysis. Builds financial readiness scenarios with governed projections and approval-posture output.
+  </Card>
+</CardGroup>
+
+---
+
+## SectorPackConfig v2 Structure
+
+Every sector pack is described by a `SoilCompletionSectorPackConfig` object at schema version `sector_pack_config_v2`. The key fields are:
+
+| Field | Type | Description |
+|---|---|---|
+| `sectorPackId` | `string` | Unique identifier for the pack (e.g., `"hbx_workplace_readiness_compliance"`). |
+| `sectorPackVersion` | `string` | Must be `"v2"`. |
+| `approvalStatus` | `string` | Always `"READY_FOR_REVIEW"` — packs do not carry final-approval status. |
+| `decisionSupportOnly` | `boolean` | Must be `true`. Enforced by SOIL. |
+| `humanReviewRequired` | `boolean` | Must be `true`. Enforced by SOIL. |
+| `allowedConditions[]` | `string[]` | Condition IDs permitted within this sector pack. |
+| `allowedEvents[]` | `string[]` | Event IDs permitted within this sector pack. |
+| `prohibitedOutputFields[]` | `string[]` | Output fields blocked from appearing in sector analysis results. |
+
+### Using the Sector Pack Builders
+
+SOIL provides dedicated builder functions for each supported sector. Use the default builder to get the governed base config, then use sector-specific builders for finance and commercial packs:
+
+```typescript
+import {
+  buildDefaultSoilCompletionSectorPackConfig,
+  buildCapitalPublicFinancePackConfig,
+  buildRevenueCommercialPackConfig,
+} from "@bel/soil-completion";
+
+// Default sector pack config (hbx_workplace_readiness_compliance)
+const defaultPack = buildDefaultSoilCompletionSectorPackConfig();
+
+// Capital and public finance sector pack
+const capitalPack = buildCapitalPublicFinancePackConfig();
+
+// Revenue and commercial sector pack
+const commercialPack = buildRevenueCommercialPackConfig();
+
+console.log("Default pack:", defaultPack.sectorPackId);
+console.log("Capital pack:", capitalPack.sectorPackId);
+console.log("Commercial pack:", commercialPack.sectorPackId);
+```
+
+---
+
+## Validating a SectorPackConfig
+
+Before you pass a sector pack config into a scenario run, validate it with `validateSoilCompletionSectorPackConfig`. This function checks that all required governance fields are present and that no prohibited values are set:
+
+```typescript
+import {
+  buildCapitalPublicFinancePackConfig,
+  validateSoilCompletionSectorPackConfig,
+} from "@bel/soil-completion";
+
+const packConfig = buildCapitalPublicFinancePackConfig();
+const validation = validateSoilCompletionSectorPackConfig(packConfig);
+
+if (!validation.valid) {
+  console.error("Sector pack config is invalid:", validation.errors);
+} else {
+  console.log("Sector pack config is valid and ready for use.");
+}
+```
+
+Run validation any time you construct a sector pack config manually or accept one from an external source. Builder-generated configs will pass validation by default.
+
+---
+
+## Required Guardrails
+
+Every `SoilCompletionSectorPackConfig` must satisfy the following governance requirements at all times:
+
+- **`decisionSupportOnly` must be `true`** — sector packs may not be configured for autonomous decision-making.
+- **`humanReviewRequired` must be `true`** — all sector analysis requires human review before downstream use.
+- **`mapRenderingIncluded` must be `false`** — SOIL produces data contracts, not rendered maps or GIS layers. Map-consumable output is contract-only.
+
+If a sector pack fails these guardrail checks, SOIL returns a safe failure response instead of analysis output. The pack is treated as blocked and the rejection reason is surfaced in the structured response.
+
+<Warning>
+  The aviation sector family is **not active** in the current sector-family loader. Attempting to load an aviation sector pack will not produce analysis output. SOIL returns a `requires_review` response with rejection reason `unsupported_sector_family`. Do not reference aviation sector pack IDs in production scenario runs until an active aviation backend lane is confirmed.
+</Warning>

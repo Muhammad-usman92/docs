@@ -1,0 +1,890 @@
+---
+title: "BEL SOIL SDK Builder Functions Reference"
+sidebarTitle: "Builders"
+description: "Complete reference for every builder function exported by the BEL SOIL SDK — from SectorPackConfig to Executive Readiness Assessment and export packages."
+---
+
+Builder functions in BEL SOIL construct validated, governance-compliant output objects for each schema type. Every builder enforces the required safety posture — `decisionSupportOnly: true`, `humanReviewRequired: true`, and `approvalStatus: READY_FOR_REVIEW` — so the objects they return are ready to pass to validators, downstream services, or export pipelines without further configuration.
+
+## Import Path
+
+Import any builder directly from the services barrel:
+
+```typescript
+import {
+  buildDefaultSoilCompletionSectorPackConfig,
+  createSoilCompletionScenarioRun,
+  buildExecutiveReadinessAssessment,
+  buildExportReadyObjectPackage,
+  createSoilCompletionPhase1SamplePackage,
+  // ...etc
+} from 'functions/src/soil/services';
+```
+
+---
+
+## Sector Pack Builders
+
+Sector pack builders return a `SoilCompletionSectorPackConfig` object that governs which sector family is active, what guardrails apply, and what the approval posture is. Pass the result directly to `createSoilCompletionScenarioRun` or validate it first with `validateSoilCompletionSectorPackConfig`.
+
+### `buildDefaultSoilCompletionSectorPackConfig()`
+
+Builds the default `SectorPackConfig v2` — the HBX Workplace Readiness & Compliance pack. Use this as your starting point for any workplace scenario.
+
+**Signature**
+
+```typescript
+function buildDefaultSoilCompletionSectorPackConfig(): SoilCompletionSectorPackConfig
+```
+
+**Returns** `SoilCompletionSectorPackConfig`
+
+**Usage**
+
+```typescript
+import { buildDefaultSoilCompletionSectorPackConfig } from 'functions/src/soil/services';
+
+const config = buildDefaultSoilCompletionSectorPackConfig();
+// config.sectorPackId === 'hbx_workplace_readiness_compliance'
+// config.sectorPackVersion === 'v2'
+// config.decisionSupportOnly === true
+// config.humanReviewRequired === true
+// config.approvalStatus === 'READY_FOR_REVIEW'
+```
+
+<Note>
+  All sector pack configs produced by SOIL builders set `decisionSupportOnly: true` and `humanReviewRequired: true` unconditionally. These fields cannot be overridden downstream.
+</Note>
+
+---
+
+### `buildCapitalPublicFinancePackConfig()`
+
+Builds a `SectorPackConfig v2` for the Capital / Public Finance sector family. Use this when your scenario targets public-sector financial readiness analysis.
+
+**Signature**
+
+```typescript
+function buildCapitalPublicFinancePackConfig(): SoilCompletionSectorPackConfig
+```
+
+**Returns** `SoilCompletionSectorPackConfig`
+
+**Usage**
+
+```typescript
+import { buildCapitalPublicFinancePackConfig } from 'functions/src/soil/services';
+
+const config = buildCapitalPublicFinancePackConfig();
+// config.sectorPackId === 'capital_public_finance'
+// config.approvalStatus === 'READY_FOR_REVIEW'
+```
+
+---
+
+### `buildRevenueCommercialPackConfig()`
+
+Builds a `SectorPackConfig v2` for the Revenue / Commercial sector family. Use this when your scenario targets commercial revenue readiness.
+
+**Signature**
+
+```typescript
+function buildRevenueCommercialPackConfig(): SoilCompletionSectorPackConfig
+```
+
+**Returns** `SoilCompletionSectorPackConfig`
+
+**Usage**
+
+```typescript
+import { buildRevenueCommercialPackConfig } from 'functions/src/soil/services';
+
+const config = buildRevenueCommercialPackConfig();
+// config.sectorPackId === 'revenue_commercial'
+// config.approvalStatus === 'READY_FOR_REVIEW'
+```
+
+---
+
+## Scenario Run Builders
+
+Scenario run builders assemble the core `SoilCompletionScenarioRun` object from structured inputs. The scenario run is the primary container that carries conditions, events, state transitions, and governance metadata through the rest of the pipeline.
+
+### `createSoilCompletionScenarioRun(sectorPackConfig, conditions, events, options)`
+
+Assembles a full scenario run object from discrete inputs. Use this when you are constructing a scenario programmatically from individual components.
+
+**Signature**
+
+```typescript
+function createSoilCompletionScenarioRun(
+  sectorPackConfig: SoilCompletionSectorPackConfig,
+  conditions: SoilCompletionWorkplaceConditionInput[],
+  events: object[],
+  options: {
+    scenarioId: string;
+    soilSessionId: string;
+    tenantId: string;
+    organizationId: string;
+    programId: string;
+    correlationId: string;
+    auditReference: string;
+    isSynthetic?: boolean;
+    assumptions?: string[];
+  }
+): SoilCompletionScenarioRun
+```
+
+**Returns** `SoilCompletionScenarioRun`
+
+**Usage**
+
+```typescript
+import {
+  buildDefaultSoilCompletionSectorPackConfig,
+  createSoilCompletionScenarioRun,
+} from 'functions/src/soil/services';
+
+const config = buildDefaultSoilCompletionSectorPackConfig();
+
+const scenarioRun = createSoilCompletionScenarioRun(
+  config,
+  [/* conditions */],
+  [/* events */],
+  {
+    scenarioId: 'scenario_001',
+    soilSessionId: 'session_001',
+    tenantId: 'tenant_demo',
+    organizationId: 'org_demo',
+    programId: 'program_demo',
+    correlationId: 'corr_001',
+    auditReference: 'audit_001',
+    isSynthetic: true,
+    assumptions: ['All condition data is source-authorized.'],
+  }
+);
+```
+
+---
+
+### `createSoilCompletionScenarioRunFromRequest(request)`
+
+Builds a scenario run directly from a `SoilCompletionScenarioRunRequest` object. Use this when you receive a pre-formed request payload (for example, from an intake endpoint) and want to convert it into a run in one step.
+
+**Signature**
+
+```typescript
+function createSoilCompletionScenarioRunFromRequest(
+  request: SoilCompletionScenarioRunRequest
+): SoilCompletionScenarioRun
+```
+
+**Returns** `SoilCompletionScenarioRun`
+
+**Usage**
+
+```typescript
+import { createSoilCompletionScenarioRunFromRequest } from 'functions/src/soil/services';
+import type { SoilCompletionScenarioRunRequest } from 'functions/src/soil/models';
+
+const request: SoilCompletionScenarioRunRequest = {
+  scenarioId: 'scenario_request_valid',
+  soilSessionId: 'soil_session_request_valid',
+  tenantId: 'tenant_demo',
+  organizationId: 'org_demo',
+  programId: 'program_demo',
+  sectorPackId: 'hbx_workplace_readiness_compliance',
+  sectorPackVersion: 'v2',
+  conditions: [/* ... */],
+  events: [/* ... */],
+  isSynthetic: true,
+  humanReviewRequired: true,
+  decisionSupportOnly: true,
+  correlationId: 'corr_request_valid',
+  auditReference: 'audit_request_valid',
+  assumptions: ['Request-level scenario creation proof.'],
+};
+
+const scenarioRun = createSoilCompletionScenarioRunFromRequest(request);
+```
+
+---
+
+### `buildSoilCompletionSafeFailureResponse(rejectionReasons, auditReference, correlationId)`
+
+Produces a governed safe failure response when a scenario run or input is rejected. The response includes a `safeFallbackOutput` with all prohibited-use declarations and a `sanitizedAuditEvent`. No unsafe output is generated from rejected input.
+
+**Signature**
+
+```typescript
+function buildSoilCompletionSafeFailureResponse(
+  rejectionReasons: string[],
+  auditReference: string,
+  correlationId: string
+): {
+  ok: false;
+  outputStatus: 'rejected';
+  rejectionReasons: string[];
+  safeFallbackOutput: SoilCompletionSafeFailureResponse;
+  sanitizedAuditEvent: SoilCompletionSanitizedAuditEvent;
+}
+```
+
+**Usage**
+
+```typescript
+import { buildSoilCompletionSafeFailureResponse } from 'functions/src/soil/services';
+
+const failure = buildSoilCompletionSafeFailureResponse(
+  ['unknown_condition:unknown_condition'],
+  'audit_failure',
+  'corr_failure'
+);
+
+// failure.ok === false
+// failure.outputStatus === 'rejected'
+// failure.safeFallbackOutput.decisionSupportOnly === true
+// failure.safeFallbackOutput.humanReviewRequired === true
+```
+
+<Warning>
+  Never pass a rejected safe failure response to downstream decisioning systems as if it were a valid scenario output. The `ok: false` field signals that the pipeline must halt and route the event to human review.
+</Warning>
+
+---
+
+## Financial and Environmental Builders
+
+### `buildFinancialReadinessScenario(params)`
+
+Builds a `SoilCompletionFinancialReadinessScenario` for either the Capital/Public Finance or Revenue/Commercial sector family. The result carries scenario metadata, readiness state, and the governed approval posture.
+
+**Signature**
+
+```typescript
+function buildFinancialReadinessScenario(params: {
+  scenarioId: string;
+  sectorPackId: 'capital_public_finance' | 'revenue_commercial';
+  conditions: object[];
+  events: object[];
+  correlationId: string;
+  auditReference: string;
+  isSynthetic?: boolean;
+  assumptions?: string[];
+}): SoilCompletionFinancialReadinessScenario
+```
+
+**Returns** `SoilCompletionFinancialReadinessScenario`
+
+**Usage**
+
+```typescript
+import { buildFinancialReadinessScenario } from 'functions/src/soil/services';
+
+const capitalScenario = buildFinancialReadinessScenario({
+  scenarioId: 'capital_scenario_001',
+  sectorPackId: 'capital_public_finance',
+  conditions: [/* ... */],
+  events: [/* ... */],
+  correlationId: 'corr_cap_001',
+  auditReference: 'audit_cap_001',
+  isSynthetic: true,
+});
+// capitalScenario.approvalStatus === 'READY_FOR_REVIEW'
+```
+
+---
+
+### `buildEosEnvironmentalOutput(conditionInputs, options)`
+
+Builds a `SoilCompletionEosEnvironmentalOutput` from environmental condition inputs. EOS output is a contract-only object — it carries structured environmental intelligence without any GIS rendering, geocoding, or map tiles.
+
+**Signature**
+
+```typescript
+function buildEosEnvironmentalOutput(
+  conditionInputs: SoilCompletionEnvironmentalConditionInput[],
+  options: {
+    outputId: string;
+    correlationId: string;
+    auditReference: string;
+    isSynthetic?: boolean;
+  }
+): SoilCompletionEosEnvironmentalOutput
+```
+
+**Returns** `SoilCompletionEosEnvironmentalOutput`
+
+**Usage**
+
+```typescript
+import { buildEosEnvironmentalOutput } from 'functions/src/soil/services';
+
+const eosOutput = buildEosEnvironmentalOutput(
+  [/* environmental condition inputs */],
+  {
+    outputId: 'eos_output_001',
+    correlationId: 'corr_eos_001',
+    auditReference: 'audit_eos_001',
+    isSynthetic: true,
+  }
+);
+// eosOutput.approvalStatus === 'READY_FOR_REVIEW'
+```
+
+---
+
+## Compliance and Fusion Builders
+
+### `evaluateWorkplaceCompliance(inputs, options)`
+
+Runs workplace suppression logic and builds a `SoilCompletionWorkplaceComplianceOutput`. Groups below the small-group threshold are suppressed and rolled up to an approved higher level. The output includes required workplace disclaimers and a multi-signal convergence flag.
+
+**Signature**
+
+```typescript
+function evaluateWorkplaceCompliance(
+  inputs: SoilCompletionWorkplaceConditionInput[],
+  options: {
+    outputId: string;
+    correlationId: string;
+    auditReference: string;
+    isSynthetic?: boolean;
+  }
+): SoilCompletionWorkplaceComplianceOutput
+```
+
+**Returns** `SoilCompletionWorkplaceComplianceOutput`
+
+**Usage**
+
+```typescript
+import { evaluateWorkplaceCompliance } from 'functions/src/soil/services';
+
+const complianceOutput = evaluateWorkplaceCompliance(
+  [/* workplace condition inputs */],
+  {
+    outputId: 'workplace_output_001',
+    correlationId: 'corr_wp_001',
+    auditReference: 'audit_wp_001',
+    isSynthetic: true,
+  }
+);
+```
+
+<Note>
+  Workplace compliance output explicitly blocks legal determinations, allegation truth scoring, credibility scoring, and automated employment actions. The `humanReviewRequired` field is always `true` on every returned object.
+</Note>
+
+---
+
+### `buildMapConsumableOutput(locationSignals, options)`
+
+Builds a `SoilCompletionMapConsumableOutput` — a structured data contract ready for consumption by a mapping layer. This object contains no GIS rendering, geocoding, map tiles, or frontend layers. It is a pure data contract.
+
+**Signature**
+
+```typescript
+function buildMapConsumableOutput(
+  locationSignals: object[],
+  options: {
+    outputId: string;
+    correlationId: string;
+    auditReference: string;
+    isSynthetic?: boolean;
+  }
+): SoilCompletionMapConsumableOutput
+```
+
+**Returns** `SoilCompletionMapConsumableOutput`
+
+**Usage**
+
+```typescript
+import { buildMapConsumableOutput } from 'functions/src/soil/services';
+
+const mapOutput = buildMapConsumableOutput(
+  [/* location signal objects */],
+  {
+    outputId: 'map_output_001',
+    correlationId: 'corr_map_001',
+    auditReference: 'audit_map_001',
+  }
+);
+// mapOutput.mapRenderingIncluded === false
+```
+
+---
+
+### `buildHumanEnvironmentFusion(humanSignals, environmentalSignals, options)`
+
+Builds the `SoilCompletionHumanEnvironmentFusion` object by combining human-context signals with environmental signals into a single governed fusion object. Use this to create cross-domain readiness context before generating downstream assessments.
+
+**Signature**
+
+```typescript
+function buildHumanEnvironmentFusion(
+  humanSignals: object[],
+  environmentalSignals: SoilCompletionEosEnvironmentalOutput,
+  options: {
+    fusionId: string;
+    correlationId: string;
+    auditReference: string;
+    isSynthetic?: boolean;
+  }
+): SoilCompletionHumanEnvironmentFusion
+```
+
+**Returns** `SoilCompletionHumanEnvironmentFusion`
+
+**Usage**
+
+```typescript
+import { buildHumanEnvironmentFusion } from 'functions/src/soil/services';
+
+const fusion = buildHumanEnvironmentFusion(
+  [/* human signals */],
+  eosOutput,
+  {
+    fusionId: 'fusion_001',
+    correlationId: 'corr_fusion_001',
+    auditReference: 'audit_fusion_001',
+  }
+);
+```
+
+---
+
+### `buildOcm10Handoff(fusionObjectId, options)`
+
+Builds the `SoilCompletionOcm10Handoff` object from a fusion object ID. The OCM-10 handoff carries the schema-versioned reference needed to pass SOIL outputs into OCM-10-compatible downstream workflows.
+
+**Signature**
+
+```typescript
+function buildOcm10Handoff(
+  fusionObjectId: string,
+  options: {
+    handoffId: string;
+    correlationId: string;
+    auditReference: string;
+    isSynthetic?: boolean;
+  }
+): SoilCompletionOcm10Handoff
+```
+
+**Returns** `SoilCompletionOcm10Handoff`
+
+**Usage**
+
+```typescript
+import { buildOcm10Handoff } from 'functions/src/soil/services';
+
+const handoff = buildOcm10Handoff(fusion.fusionId, {
+  handoffId: 'ocm10_handoff_001',
+  correlationId: 'corr_ocm_001',
+  auditReference: 'audit_ocm_001',
+});
+```
+
+---
+
+## Projection and Assessment Builders
+
+### `buildRealityFeedbackHook(options)`
+
+Builds the `SoilCompletionRealityFeedbackHook`. Automatic recalibration is always `false` on every object this builder returns — SOIL does not permit autonomous model updates.
+
+**Signature**
+
+```typescript
+function buildRealityFeedbackHook(options: {
+  hookId: string;
+  correlationId: string;
+  auditReference: string;
+  isSynthetic?: boolean;
+}): SoilCompletionRealityFeedbackHook
+```
+
+**Returns** `SoilCompletionRealityFeedbackHook`
+
+**Usage**
+
+```typescript
+import { buildRealityFeedbackHook } from 'functions/src/soil/services';
+
+const feedbackHook = buildRealityFeedbackHook({
+  hookId: 'feedback_hook_001',
+  correlationId: 'corr_feedback_001',
+  auditReference: 'audit_feedback_001',
+});
+// feedbackHook.automaticRecalibration === false  (always)
+```
+
+<Warning>
+  `automaticRecalibration` is always `false`. SOIL does not support autonomous recalibration or automatic production model changes. Any attempt to set this field to `true` will fail validation.
+</Warning>
+
+---
+
+### `buildBenchmarkReadyOutput(options)`
+
+Builds the `SoilCompletionBenchmarkReadyOutput`. Active benchmarking and ranking are always `false` — cross-tenant aggregation, cohort publication, and ranking are outside the SOIL scope.
+
+**Signature**
+
+```typescript
+function buildBenchmarkReadyOutput(options: {
+  outputId: string;
+  correlationId: string;
+  auditReference: string;
+  isSynthetic?: boolean;
+}): SoilCompletionBenchmarkReadyOutput
+```
+
+**Returns** `SoilCompletionBenchmarkReadyOutput`
+
+**Usage**
+
+```typescript
+import { buildBenchmarkReadyOutput } from 'functions/src/soil/services';
+
+const benchmarkOutput = buildBenchmarkReadyOutput({
+  outputId: 'benchmark_output_001',
+  correlationId: 'corr_bench_001',
+  auditReference: 'audit_bench_001',
+});
+// benchmarkOutput.activeBenchmarking === false  (always)
+```
+
+---
+
+### `buildReadinessHorizonProjection(params)`
+
+Builds the `SoilCompletionReadinessHorizonProjection` — a four-case forward readiness range covering base, upside, downside, and stress scenarios.
+
+**Signature**
+
+```typescript
+function buildReadinessHorizonProjection(params: {
+  projectionId: string;
+  scenarioRunId: string;
+  correlationId: string;
+  auditReference: string;
+  baseCase: object;
+  upsideCase: object;
+  downsideCase: object;
+  stressCase: object;
+  isSynthetic?: boolean;
+  assumptions?: string[];
+}): SoilCompletionReadinessHorizonProjection
+```
+
+**Returns** `SoilCompletionReadinessHorizonProjection`
+
+**Usage**
+
+```typescript
+import { buildReadinessHorizonProjection } from 'functions/src/soil/services';
+
+const horizonProjection = buildReadinessHorizonProjection({
+  projectionId: 'horizon_001',
+  scenarioRunId: scenarioRun.scenarioId,
+  correlationId: 'corr_horizon_001',
+  auditReference: 'audit_horizon_001',
+  baseCase: { readinessScore: 0.65, label: 'base' },
+  upsideCase: { readinessScore: 0.82, label: 'upside' },
+  downsideCase: { readinessScore: 0.48, label: 'downside' },
+  stressCase: { readinessScore: 0.31, label: 'stress' },
+  isSynthetic: true,
+  assumptions: ['Horizon projections are decision-support estimates only.'],
+});
+```
+
+---
+
+### `buildProjectedVsObserved(params)`
+
+Builds the `SoilCompletionProjectedVsObserved` comparison object. Automatic model change based on this comparison is always disabled — all model updates require human review.
+
+**Signature**
+
+```typescript
+function buildProjectedVsObserved(params: {
+  comparisonId: string;
+  scenarioRunId: string;
+  projectedValues: object;
+  observedValues: object;
+  correlationId: string;
+  auditReference: string;
+  isSynthetic?: boolean;
+}): SoilCompletionProjectedVsObserved
+```
+
+**Returns** `SoilCompletionProjectedVsObserved`
+
+**Usage**
+
+```typescript
+import { buildProjectedVsObserved } from 'functions/src/soil/services';
+
+const comparison = buildProjectedVsObserved({
+  comparisonId: 'pvo_001',
+  scenarioRunId: scenarioRun.scenarioId,
+  projectedValues: { readinessScore: 0.65 },
+  observedValues: { readinessScore: 0.58 },
+  correlationId: 'corr_pvo_001',
+  auditReference: 'audit_pvo_001',
+  isSynthetic: true,
+});
+// comparison.automaticModelChange === false  (always)
+```
+
+---
+
+### `buildExecutiveReadinessAssessment(params)`
+
+Builds the `SoilCompletionExecutiveReadinessAssessment` along with its three ledgers — Evidence, Assumption, and Confidence. The executive assessment is the highest-level summary object in the SOIL pipeline and carries the final `READY_FOR_REVIEW` approval posture.
+
+**Signature**
+
+```typescript
+function buildExecutiveReadinessAssessment(params: {
+  assessmentId: string;
+  scenarioRunId: string;
+  horizonProjection: SoilCompletionReadinessHorizonProjection;
+  projectedVsObserved: SoilCompletionProjectedVsObserved;
+  workplaceOutput: SoilCompletionWorkplaceComplianceOutput;
+  correlationId: string;
+  auditReference: string;
+  isSynthetic?: boolean;
+  assumptions?: string[];
+}): SoilCompletionExecutiveReadinessAssessment
+```
+
+**Returns** `SoilCompletionExecutiveReadinessAssessment`
+
+**Usage**
+
+```typescript
+import { buildExecutiveReadinessAssessment } from 'functions/src/soil/services';
+
+const executiveAssessment = buildExecutiveReadinessAssessment({
+  assessmentId: 'exec_assessment_001',
+  scenarioRunId: scenarioRun.scenarioId,
+  horizonProjection,
+  projectedVsObserved: comparison,
+  workplaceOutput: complianceOutput,
+  correlationId: 'corr_exec_001',
+  auditReference: 'audit_exec_001',
+  isSynthetic: true,
+  assumptions: ['Assessment is decision support only.'],
+});
+// executiveAssessment.approvalStatus === 'READY_FOR_REVIEW'
+// executiveAssessment.evidenceLedger  — populated Evidence ledger
+// executiveAssessment.assumptionLedger — populated Assumption ledger
+// executiveAssessment.confidenceLedger — populated Confidence ledger
+```
+
+---
+
+## Observability and Export Builders
+
+### `buildObservabilityTrace(params)`
+
+Builds the `SoilCompletionObservabilityTraceHook` — a structured trace record that links all objects in a pipeline run to a single audit reference and correlation ID for observability and audit purposes.
+
+**Signature**
+
+```typescript
+function buildObservabilityTrace(params: {
+  traceId: string;
+  correlationId: string;
+  auditReference: string;
+  objectIds: string[];
+  isSynthetic?: boolean;
+}): SoilCompletionObservabilityTraceHook
+```
+
+**Returns** `SoilCompletionObservabilityTraceHook`
+
+**Usage**
+
+```typescript
+import { buildObservabilityTrace } from 'functions/src/soil/services';
+
+const trace = buildObservabilityTrace({
+  traceId: 'trace_001',
+  correlationId: 'corr_001',
+  auditReference: 'audit_001',
+  objectIds: [
+    scenarioRun.scenarioId,
+    complianceOutput.outputId,
+    executiveAssessment.assessmentId,
+  ],
+  isSynthetic: true,
+});
+```
+
+---
+
+### `buildProtectedUseStatus(options)`
+
+Builds the `SoilCompletionProtectedUseStatus` hook — a governance marker that records the protected-use declaration attached to a pipeline run.
+
+**Signature**
+
+```typescript
+function buildProtectedUseStatus(options: {
+  statusId: string;
+  correlationId: string;
+  auditReference: string;
+  isSynthetic?: boolean;
+}): SoilCompletionProtectedUseStatus
+```
+
+**Returns** `SoilCompletionProtectedUseStatus`
+
+**Usage**
+
+```typescript
+import { buildProtectedUseStatus } from 'functions/src/soil/services';
+
+const protectedStatus = buildProtectedUseStatus({
+  statusId: 'protected_status_001',
+  correlationId: 'corr_001',
+  auditReference: 'audit_001',
+});
+```
+
+---
+
+### `buildAdminHubReadableSoilOutput(params)`
+
+Builds the `SoilCompletionAdminHubReadableSoilOutput` — a structured summary object formatted for consumption by the Admin Hub. Carries `approvalStatus: READY_FOR_REVIEW`.
+
+**Signature**
+
+```typescript
+function buildAdminHubReadableSoilOutput(params: {
+  outputId: string;
+  scenarioRunId: string;
+  executiveAssessment: SoilCompletionExecutiveReadinessAssessment;
+  observabilityTrace: SoilCompletionObservabilityTraceHook;
+  protectedUseStatus: SoilCompletionProtectedUseStatus;
+  correlationId: string;
+  auditReference: string;
+  isSynthetic?: boolean;
+}): SoilCompletionAdminHubReadableSoilOutput
+```
+
+**Returns** `SoilCompletionAdminHubReadableSoilOutput`
+
+**Usage**
+
+```typescript
+import { buildAdminHubReadableSoilOutput } from 'functions/src/soil/services';
+
+const adminOutput = buildAdminHubReadableSoilOutput({
+  outputId: 'admin_output_001',
+  scenarioRunId: scenarioRun.scenarioId,
+  executiveAssessment,
+  observabilityTrace: trace,
+  protectedUseStatus: protectedStatus,
+  correlationId: 'corr_001',
+  auditReference: 'audit_001',
+});
+// adminOutput.approvalStatus === 'READY_FOR_REVIEW'
+```
+
+---
+
+### `buildExportReadyObjectPackage(params)`
+
+Bundles all pipeline objects into a single `SoilCompletionExportReadyObjectPackage`. Use this as the final step in a pipeline run to produce one governed, exportable envelope. The package carries `approvalStatus: READY_FOR_REVIEW`.
+
+**Signature**
+
+```typescript
+function buildExportReadyObjectPackage(params: {
+  packageId: string;
+  scenarioRun: SoilCompletionScenarioRun;
+  adminHubOutput: SoilCompletionAdminHubReadableSoilOutput;
+  executiveAssessment: SoilCompletionExecutiveReadinessAssessment;
+  observabilityTrace: SoilCompletionObservabilityTraceHook;
+  protectedUseStatus: SoilCompletionProtectedUseStatus;
+  correlationId: string;
+  auditReference: string;
+  isSynthetic?: boolean;
+}): SoilCompletionExportReadyObjectPackage
+```
+
+**Returns** `SoilCompletionExportReadyObjectPackage`
+
+**Usage**
+
+```typescript
+import { buildExportReadyObjectPackage } from 'functions/src/soil/services';
+
+const exportPackage = buildExportReadyObjectPackage({
+  packageId: 'export_package_001',
+  scenarioRun,
+  adminHubOutput: adminOutput,
+  executiveAssessment,
+  observabilityTrace: trace,
+  protectedUseStatus: protectedStatus,
+  correlationId: 'corr_001',
+  auditReference: 'audit_001',
+  isSynthetic: true,
+});
+// exportPackage.approvalStatus === 'READY_FOR_REVIEW'
+```
+
+---
+
+### `createSoilCompletionPhase1SamplePackage()`
+
+Generates the complete Phase 1 sample package in a single call — all output objects, fully populated with synthetic data, ready to inspect or test against. Use this for integration testing, acceptance verification, or exploring the full SOIL object graph.
+
+**Signature**
+
+```typescript
+function createSoilCompletionPhase1SamplePackage(): SoilCompletionPhase1SamplePackage
+```
+
+**Returns** `SoilCompletionPhase1SamplePackage`
+
+**Usage**
+
+```typescript
+import { createSoilCompletionPhase1SamplePackage } from 'functions/src/soil/services';
+
+const sample = createSoilCompletionPhase1SamplePackage();
+
+// Inspect individual objects:
+console.log(sample.sectorPackConfig);
+console.log(sample.executiveReadinessAssessment);
+console.log(sample.exportReadyObjectPackage);
+```
+
+**Returned Object Properties**
+
+| Property | Type | Description |
+|---|---|---|
+| `sectorPackConfig` | `SoilCompletionSectorPackConfig` | The default HBX Workplace Readiness & Compliance sector pack config (v2). |
+| `scenarioRun` | `SoilCompletionScenarioRun` | A fully assembled scenario run with synthetic conditions and events. |
+| `workplaceOutput` | `SoilCompletionWorkplaceComplianceOutput` | Workplace compliance output with suppression and rollup applied. |
+| `mapConsumableOutput` | `SoilCompletionMapConsumableOutput` | Map-consumable data contract (no GIS rendering). |
+| `humanEnvironmentFusion` | `SoilCompletionHumanEnvironmentFusion` | Human-environment fusion object combining workplace and EOS signals. |
+| `ocm10Handoff` | `SoilCompletionOcm10Handoff` | OCM-10 handoff object referencing the fusion ID. |
+| `realityFeedbackHook` | `SoilCompletionRealityFeedbackHook` | Reality feedback hook with `automaticRecalibration: false`. |
+| `benchmarkReadyOutput` | `SoilCompletionBenchmarkReadyOutput` | Benchmark metadata with `activeBenchmarking: false`. |
+| `readinessHorizonProjection` | `SoilCompletionReadinessHorizonProjection` | Four-case readiness horizon: base, upside, downside, and stress. |
+| `projectedVsObserved` | `SoilCompletionProjectedVsObserved` | Projected vs. observed comparison with automatic model change disabled. |
+| `executiveReadinessAssessment` | `SoilCompletionExecutiveReadinessAssessment` | Executive assessment with Evidence, Assumption, and Confidence ledgers. |
+| `observabilityTrace` | `SoilCompletionObservabilityTraceHook` | Observability trace linking all object IDs to the audit reference. |
+| `protectedUseStatus` | `SoilCompletionProtectedUseStatus` | Protected-use governance marker for the pipeline run. |
+
+<Tip>
+  Run `createSoilCompletionPhase1SamplePackage()` in your acceptance tests to verify that the entire object graph is structurally valid before passing individual objects to validators or downstream services. Every property on the returned package can be independently passed to its matching validator.
+</Tip>

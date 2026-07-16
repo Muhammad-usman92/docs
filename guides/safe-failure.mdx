@@ -1,0 +1,161 @@
+---
+title: "Safe Failure Responses and Audit Events in BEL SOIL"
+sidebarTitle: "Safe Failure"
+description: "Understand how BEL SOIL handles invalid or unsafe inputs — producing rejected safe fallback responses and sanitized audit events instead of unsafe output."
+---
+
+BEL SOIL's core safety guarantee is simple: **unsafe inputs never produce unsafe outputs.** When SOIL receives a request it cannot process safely — because of an unrecognized condition, a blocked sector pack, a governance violation, or an identity-rich input — it does not silently fail, return partial output, or produce a best-effort result. Instead, it returns a fully structured **safe failure response**: a governed rejection object containing the reason for rejection, a safe fallback output block, and a sanitized audit event. Your integration can rely on this behavior being predictable and consistent.
+
+---
+
+## When Safe Failure Triggers
+
+SOIL produces a safe failure response in the following situations:
+
+<Steps>
+  <Step title="Unknown or unsupported condition ID">
+    A condition in the request references a `conditionId` that is not recognized by the active sector pack or SOIL's condition registry. Rejection reason: `unknown_condition:{conditionId}`.
+  </Step>
+  <Step title="Blocked sector pack (unsupported sector family)">
+    The requested sector pack references a sector family that is not active in the current sector-family loader (e.g., aviation). Rejection reason: `unsupported_sector_family`.
+  </Step>
+  <Step title="Identity-rich workplace input">
+    A workplace condition input contains individual identifiers such as names, employee IDs, or other personally identifying attributes. SOIL rejects these inputs before any analysis runs. Rejection reason: `identity_rich_input`.
+  </Step>
+  <Step title="decisionSupportOnly set to false">
+    Any request or sector pack config that sets `decisionSupportOnly: false` is immediately rejected. SOIL does not operate outside decision-support mode. Rejection reason: `decision_support_only_violation`.
+  </Step>
+  <Step title="humanReviewRequired set to false">
+    Any request or sector pack config that sets `humanReviewRequired: false` is immediately rejected. All SOIL outputs require human review. Rejection reason: `human_review_required_violation`.
+  </Step>
+</Steps>
+
+---
+
+## Safe Failure Response Shape
+
+When any of the above conditions are met, SOIL returns `ok: false` with the full rejection structure. Here is the complete safe failure response shape:
+
+```json
+{
+  "ok": false,
+  "outputStatus": "rejected",
+  "rejectionReasons": ["unknown_condition:unknown_condition"],
+  "safeFallbackOutput": {
+    "outputStatus": "rejected",
+    "decisionSupportOnly": true,
+    "humanReviewRequired": true,
+    "prohibitedUses": [
+      "No unsafe SOIL output generated from rejected input.",
+      "No final decision may be made from rejected input."
+    ],
+    "auditReference": "audit_failure",
+    "correlationId": "corr_failure"
+  },
+  "sanitizedAuditEvent": {
+    "auditEventId": "sanitized_audit_failure",
+    "eventType": "soil_completion_failure_path_rejected",
+    "status": "failure",
+    "sanitized": true,
+    "reasonCodes": ["unknown_condition:unknown_condition"],
+    "auditReference": "audit_failure",
+    "correlationId": "corr_failure"
+  }
+}
+```
+
+Notice that even a rejected response preserves `decisionSupportOnly: true` and `humanReviewRequired: true` in the fallback output block. These fields are invariant — they appear in every SOIL response regardless of outcome.
+
+---
+
+## Safe Fallback Output Fields
+
+The `safeFallbackOutput` block inside a rejection response contains the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `outputStatus` | `string` | Always `"rejected"` on a failure path. |
+| `decisionSupportOnly` | `boolean` | Always `true`. SOIL never relaxes this constraint. |
+| `humanReviewRequired` | `boolean` | Always `true`. Even rejected requests require review logging. |
+| `prohibitedUses` | `string[]` | Explicit statements of what the rejected output must not be used for. Always present. |
+| `auditReference` | `string` | The audit reference key from the originating request. Preserved even on failure. |
+| `correlationId` | `string` | The correlation ID from the originating request. Preserved for trace linkage. |
+
+---
+
+## Sanitized Audit Event
+
+Every safe failure response includes a `sanitizedAuditEvent` — a `SoilCompletionSanitizedAuditEvent` object that records the failure for audit purposes without exposing the unsafe input content. Its fields are:
+
+| Field | Type | Description |
+|---|---|---|
+| `auditEventId` | `string` | Unique identifier for this audit event. |
+| `eventType` | `string` | Always `"soil_completion_failure_path_rejected"` on rejection paths. |
+| `status` | `string` | Always `"failure"` for safe failure events. |
+| `sanitized` | `boolean` | Always `true`. The event does not contain the original unsafe input. |
+| `reasonCodes` | `string[]` | Structured rejection reason codes explaining why the input was rejected. |
+| `auditReference` | `string` | The audit reference from the originating request. |
+| `correlationId` | `string` | The correlation ID from the originating request. |
+
+The sanitized audit event is your integration's audit trail for the failure. Store it alongside your other SOIL audit records — it tells reviewers that a request was attempted, why it was rejected, and that no unsafe output was produced.
+
+---
+
+## Using `buildSoilCompletionSafeFailureResponse`
+
+You can use the `buildSoilCompletionSafeFailureResponse` builder to construct safe failure responses within your own SOIL-integrated services — for example, when building a validation gateway layer that pre-screens requests before they reach the SOIL backend:
+
+```typescript
+import { buildSoilCompletionSafeFailureResponse } from "@bel/soil-completion";
+
+const safeFailure = buildSoilCompletionSafeFailureResponse({
+  rejectionReasons: ["unknown_condition:unrecognized_condition_id"],
+  auditReference: "audit_my_request_001",
+  correlationId: "corr_my_request_001",
+});
+
+console.log("Safe failure ok:", safeFailure.ok); // false
+console.log("Output status:", safeFailure.outputStatus); // "rejected"
+console.log("Rejection reasons:", safeFailure.rejectionReasons);
+console.log("Audit event sanitized:", safeFailure.sanitizedAuditEvent.sanitized); // true
+```
+
+---
+
+## Handling Rejection in Your Integration
+
+When you call `createSoilCompletionScenarioRunFromRequest` or any other SOIL builder function, always check the `ok` field first. If `ok` is `false`, read `rejectionReasons` to classify the failure and route it appropriately:
+
+```typescript
+import { createSoilCompletionScenarioRunFromRequest } from "@bel/soil-completion";
+
+const result = await createSoilCompletionScenarioRunFromRequest(myRequest);
+
+if (!result.ok) {
+  const reasons = result.rejectionReasons ?? [];
+
+  if (reasons.some((r) => r.startsWith("unknown_condition:"))) {
+    console.error("Request contains unrecognized condition IDs:", reasons);
+  } else if (reasons.includes("unsupported_sector_family")) {
+    console.error("Sector pack references an unsupported sector family.");
+  } else if (reasons.includes("identity_rich_input")) {
+    console.error("Input contains individual identifiers. Strip PII before resubmitting.");
+  } else if (
+    reasons.includes("decision_support_only_violation") ||
+    reasons.includes("human_review_required_violation")
+  ) {
+    console.error("Governance constraint violated. Both decisionSupportOnly and humanReviewRequired must be true.");
+  } else {
+    console.error("Request rejected for unknown reason:", reasons);
+  }
+
+  // Always store the sanitized audit event regardless of reason
+  storeAuditEvent(result.sanitizedAuditEvent);
+} else {
+  console.log("Scenario run accepted:", result.scenarioRun);
+}
+```
+
+<Tip>
+  Always test your integration against the failure paths before going to production. Submit a request with an unknown condition ID, a suppressed sector pack, and a governance violation — confirm that each returns `ok: false` with the expected rejection reason code. SOIL provides predictable, structured rejection responses. Use them to validate your error-handling logic before your first live scenario run.
+</Tip>

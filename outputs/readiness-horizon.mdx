@@ -1,0 +1,190 @@
+---
+title: "Readiness Horizon Projection: Forward-Looking Analysis"
+sidebarTitle: "Readiness Horizon"
+description: "The Readiness Horizon projection models base, upside, downside, and stress-case scenarios for forward-looking organizational readiness analysis."
+---
+
+The Readiness Horizon Projection is SOIL's structured forward-looking analysis object. Rather than describing current conditions, it models how organizational readiness may evolve over a defined projection window — producing four scenario cases that bracket the range of plausible outcomes. Each case carries its own readiness score, confidence level, and supporting assumptions, giving reviewers a structured view of best-case, expected, pessimistic, and adverse trajectories. All four cases are produced in a single object and are governed by the same `decisionSupportOnly` and `humanReviewRequired` posture as all other SOIL outputs.
+
+## Projection Cases
+
+The Readiness Horizon projection produces four structured cases, each representing a distinct trajectory hypothesis:
+
+### Base Case
+
+The base case represents the **expected trajectory** given current conditions as modeled in the scenario run. It assumes that active risks continue at their current intensity without significant escalation or resolution. Use the base case as your primary reference point when evaluating forward-looking readiness.
+
+### Upside Case
+
+The upside case represents an **optimistic trajectory** in which key identified risks are resolved or significantly de-escalated within the projection window. It is not a best-possible-case fantasy — it is a structured model of what readiness would look like if the most important risk factors moved favorably.
+
+### Downside Case
+
+The downside case represents a **pessimistic trajectory** in which active risks intensify or new compounding pressures emerge. It is useful for stress-testing current mitigation plans and identifying the floor of readiness under adverse-but-plausible conditions.
+
+### Stress Case
+
+The stress case is an **adverse scenario** that models the impact of multiple risk factors worsening simultaneously. It is the most conservative of the four cases and is intended to support contingency planning and escalation threshold-setting by human reviewers.
+
+## Readiness Horizon Fields
+
+The `SoilCompletionReadinessHorizonProjection` type carries the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `projectionWindowDays` | `number` | The number of days over which the projection extends |
+| `baseCase` | `ProjectionCase` | Expected trajectory case |
+| `upsideCase` | `ProjectionCase` | Optimistic trajectory case |
+| `downsideCase` | `ProjectionCase` | Pessimistic trajectory case |
+| `stressCase` | `ProjectionCase` | Adverse scenario case |
+| `approvalStatus` | `string` | Always `READY_FOR_REVIEW` |
+| `humanReviewRequired` | `boolean` | Always `true` |
+| `decisionSupportOnly` | `boolean` | Always `true` |
+
+Each `ProjectionCase` object contains:
+
+| Field | Type | Description |
+|---|---|---|
+| `readinessScore` | `number` | Projected readiness score at end of window for this case |
+| `confidence` | `number` | Confidence level for this case's projection (0.0–1.0) |
+| `assumptions` | `string[]` | Stated assumptions underlying this case's trajectory |
+
+## Projected vs. Observed Comparison
+
+After a projection window elapses, you can compare the prior projection against what was actually observed using `SoilCompletionProjectedVsObserved`. This object gives your review team a structured record of how the model performed against reality.
+
+Key fields in `SoilCompletionProjectedVsObserved`:
+
+| Field | Type | Description |
+|---|---|---|
+| `priorProjectionReference` | `string` | Reference ID of the original Readiness Horizon Projection |
+| `observedReadinessScore` | `number` | The readiness score actually observed at the end of the projection window |
+| `varianceExplanation` | `string` | Plain-language explanation of the gap between projected and observed scores |
+| `automaticModelChange` | `boolean` | Always `false` — SOIL never updates its model automatically |
+| `approvalStatus` | `string` | Always `READY_FOR_REVIEW` |
+| `humanReviewRequired` | `boolean` | Always `true` |
+| `decisionSupportOnly` | `boolean` | Always `true` |
+
+Use `buildProjectedVsObserved()` to produce this comparison object and `validateProjectedVsObserved()` to validate it:
+
+```typescript
+import {
+  buildProjectedVsObserved,
+  validateProjectedVsObserved,
+} from "functions/src/soil/services/soilCompletion";
+
+const comparison = buildProjectedVsObserved({
+  priorProjectionReference: "readiness_horizon_run_001",
+  observedReadinessScore: 0.54,
+  varianceExplanation:
+    "Observed score fell between base and downside cases. Workload pressure persisted longer than modeled.",
+  schemaVersion: "projected_vs_observed_v1",
+});
+
+const validationResult = validateProjectedVsObserved(comparison);
+```
+
+## Building a Readiness Horizon
+
+Use `buildReadinessHorizonProjection()` to produce the projection object from a completed scenario run, then validate it with `validateReadinessHorizonProjection()`.
+
+```typescript
+import {
+  buildReadinessHorizonProjection,
+  validateReadinessHorizonProjection,
+} from "functions/src/soil/services/soilCompletion";
+
+const horizonProjection = buildReadinessHorizonProjection({
+  scenarioRunId: "scenario_run_001",
+  tenantId: "tenant_demo",
+  organizationId: "org_demo",
+  sectorPackId: "hbx_workplace_readiness_compliance",
+  projectionWindowDays: 90,
+  baseCase: {
+    readinessScore: 0.57,
+    confidence: 0.71,
+    assumptions: [
+      "Active conditions continue at current intensity.",
+      "No new compounding events introduced in window.",
+    ],
+  },
+  upsideCase: {
+    readinessScore: 0.74,
+    confidence: 0.55,
+    assumptions: [
+      "EEO complaint activity resolves within 45 days.",
+      "Workload pressure normalizes following operational adjustment.",
+    ],
+  },
+  downsideCase: {
+    readinessScore: 0.39,
+    confidence: 0.60,
+    assumptions: [
+      "Complaint activity escalates to additional departments.",
+      "Workload pressure extends beyond the projection window.",
+    ],
+  },
+  stressCase: {
+    readinessScore: 0.22,
+    confidence: 0.45,
+    assumptions: [
+      "Multiple risk factors compound simultaneously.",
+      "No mitigation actions taken during window.",
+    ],
+  },
+});
+
+const validationResult = validateReadinessHorizonProjection(horizonProjection);
+```
+
+A validated Readiness Horizon Projection object looks like this:
+
+```json
+{
+  "scenarioRunId": "scenario_run_001",
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "projectionWindowDays": 90,
+  "baseCase": {
+    "readinessScore": 0.57,
+    "confidence": 0.71,
+    "assumptions": [
+      "Active conditions continue at current intensity.",
+      "No new compounding events introduced in window."
+    ]
+  },
+  "upsideCase": {
+    "readinessScore": 0.74,
+    "confidence": 0.55,
+    "assumptions": [
+      "EEO complaint activity resolves within 45 days.",
+      "Workload pressure normalizes following operational adjustment."
+    ]
+  },
+  "downsideCase": {
+    "readinessScore": 0.39,
+    "confidence": 0.60,
+    "assumptions": [
+      "Complaint activity escalates to additional departments.",
+      "Workload pressure extends beyond the projection window."
+    ]
+  },
+  "stressCase": {
+    "readinessScore": 0.22,
+    "confidence": 0.45,
+    "assumptions": [
+      "Multiple risk factors compound simultaneously.",
+      "No mitigation actions taken during window."
+    ]
+  },
+  "schemaVersion": "readiness_horizon_projection_v1",
+  "approvalStatus": "READY_FOR_REVIEW",
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true
+}
+```
+
+<Warning>
+Automatic model change is blocked. SOIL never updates its projection model automatically based on observed data — not even when observed outcomes diverge significantly from the projected cases. All model updates require human review and explicit re-configuration by an authorized reviewer. The `automaticModelChange` field on every `ProjectedVsObserved` object will always be `false`.
+</Warning>

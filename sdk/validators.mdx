@@ -1,0 +1,414 @@
+---
+title: "BEL SOIL SDK Validator Functions Reference"
+sidebarTitle: "Validators"
+description: "Validator functions in the BEL SOIL SDK check that objects conform to their schema contracts before use. Returns validation status and error arrays."
+---
+
+Validator functions in BEL SOIL check schema compliance for every SOIL output type. Run them before passing objects to downstream systems, export pipelines, or any integration that expects a governed SOIL contract. Each validator inspects the object's required governance fields, prohibited values, and schema-version markers — and returns a structured result rather than throwing.
+
+## Import Path
+
+```typescript
+import {
+  validateSoilCompletionSectorPackConfig,
+  validateSoilCompletionScenarioRunRequest,
+  validateExportReadyObjectPackage,
+  // ...etc
+} from 'functions/src/soil/services';
+```
+
+---
+
+## Validation Return Pattern
+
+Every validator returns a `{ valid: boolean; errors: string[] }` object. When `valid` is `true`, `errors` is an empty array. When `valid` is `false`, `errors` contains one or more human-readable descriptions of what failed.
+
+```typescript
+const result = validateSoilCompletionSectorPackConfig(config);
+
+if (!result.valid) {
+  console.error('Validation failed:', result.errors);
+  // Route to safe failure path — do not pass config downstream
+} else {
+  // Proceed with the governed pipeline
+}
+```
+
+<Note>
+  Validators never throw. A structurally broken object produces `valid: false` with descriptive errors — not an uncaught exception. Always check `result.valid` before continuing a pipeline run.
+</Note>
+
+---
+
+## Core Validators
+
+### `validateSoilCompletionSectorPackConfig(config)`
+
+Validates a `SoilCompletionSectorPackConfig` against the v2 schema contract.
+
+**Input** `SoilCompletionSectorPackConfig`
+
+**Checks**
+- `decisionSupportOnly` is present and `true`
+- `humanReviewRequired` is present and `true`
+- `sectorPackVersion` is `v2`
+- No prohibited output fields (legal determinations, certification, compliance-pass language) are present
+- `approvalStatus` is within the allowed posture vocabulary
+
+```typescript
+import { validateSoilCompletionSectorPackConfig } from 'functions/src/soil/services';
+
+const result = validateSoilCompletionSectorPackConfig(config);
+if (!result.valid) {
+  console.error('SectorPackConfig invalid:', result.errors);
+}
+```
+
+---
+
+### `validateSoilCompletionScenarioRunRequest(request)`
+
+Validates a `SoilCompletionScenarioRunRequest` before it is submitted to the scenario run builder.
+
+**Input** `SoilCompletionScenarioRunRequest`
+
+**Checks**
+- Required identifiers are present: `scenarioId`, `soilSessionId`, `tenantId`, `organizationId`, `programId`
+- `sectorPackId` is a known, active sector family (not `requires_review`)
+- `sectorPackVersion` is `v2`
+- `decisionSupportOnly` and `humanReviewRequired` are both `true`
+- `conditions` array is non-empty and each condition carries a valid `conditionId`, `conditionVersion`, `confidence` (0–1), and non-empty `assumptions`
+- No identity-rich fields are present in condition inputs
+
+```typescript
+import { validateSoilCompletionScenarioRunRequest } from 'functions/src/soil/services';
+
+const result = validateSoilCompletionScenarioRunRequest(request);
+if (!result.valid) {
+  const failure = buildSoilCompletionSafeFailureResponse(
+    result.errors,
+    request.auditReference,
+    request.correlationId
+  );
+  return failure;
+}
+```
+
+<Warning>
+  If `validateSoilCompletionScenarioRunRequest` returns `valid: false`, route immediately to `buildSoilCompletionSafeFailureResponse`. Do not attempt to construct a scenario run from an invalid request.
+</Warning>
+
+---
+
+## Environmental and Map Validators
+
+### `validateEosEnvironmentalConditionInput(input)`
+
+Validates a single `SoilCompletionEnvironmentalConditionInput` before it is passed to `buildEosEnvironmentalOutput`.
+
+**Input** `SoilCompletionEnvironmentalConditionInput`
+
+**Checks**
+- Required fields are present: `conditionId`, `conditionVersion`, `category`, `intensity`
+- `confidence` is a number between 0 and 1
+- No GIS-rendering or geocoding fields are present — EOS inputs are contract-only
+
+```typescript
+import { validateEosEnvironmentalConditionInput } from 'functions/src/soil/services';
+
+for (const input of conditionInputs) {
+  const result = validateEosEnvironmentalConditionInput(input);
+  if (!result.valid) {
+    console.error(`Condition ${input.conditionId} invalid:`, result.errors);
+  }
+}
+```
+
+---
+
+### `validateMapConsumableOutput(output)`
+
+Validates a `SoilCompletionMapConsumableOutput` data contract.
+
+**Input** `SoilCompletionMapConsumableOutput`
+
+**Checks**
+- `mapRenderingIncluded` is `false` — the object must not contain GIS rendering artifacts
+- Schema version matches `map_consumable_output_v1`
+- Required location signal references are present
+- No geocoding, tile, or frontend layer fields are present
+
+```typescript
+import { validateMapConsumableOutput } from 'functions/src/soil/services';
+
+const result = validateMapConsumableOutput(mapOutput);
+if (!result.valid) {
+  console.error('Map output invalid:', result.errors);
+}
+```
+
+---
+
+## Fusion and Handoff Validators
+
+### `validateHumanEnvironmentFusion(fusion)`
+
+Validates a `SoilCompletionHumanEnvironmentFusion` object.
+
+**Input** `SoilCompletionHumanEnvironmentFusion`
+
+**Checks**
+- `fusionId` is present
+- Both `humanSignals` and `environmentalSignals` references are populated
+- Schema version matches `human_environment_fusion_v1`
+- `decisionSupportOnly` and `humanReviewRequired` are `true`
+
+```typescript
+import { validateHumanEnvironmentFusion } from 'functions/src/soil/services';
+
+const result = validateHumanEnvironmentFusion(fusion);
+if (!result.valid) {
+  console.error('Fusion object invalid:', result.errors);
+}
+```
+
+---
+
+### `validateOcm10Handoff(handoff)`
+
+Validates a `SoilCompletionOcm10Handoff` object against the OCM-10 schema contract.
+
+**Input** `SoilCompletionOcm10Handoff`
+
+**Checks**
+- `handoffId` and `fusionObjectId` are present
+- Schema version matches `ocm10_handoff_v1`
+- `correlationId` and `auditReference` are present
+
+```typescript
+import { validateOcm10Handoff } from 'functions/src/soil/services';
+
+const result = validateOcm10Handoff(handoff);
+if (!result.valid) {
+  console.error('OCM-10 handoff invalid:', result.errors);
+}
+```
+
+---
+
+### `validateRealityFeedbackHook(hook)`
+
+Validates a `SoilCompletionRealityFeedbackHook` object.
+
+**Input** `SoilCompletionRealityFeedbackHook`
+
+**Checks**
+- `automaticRecalibration` is `false` — automatic recalibration is a prohibited behavior
+- Schema version matches `reality_feedback_hook_v1`
+- `hookId`, `correlationId`, and `auditReference` are present
+
+```typescript
+import { validateRealityFeedbackHook } from 'functions/src/soil/services';
+
+const result = validateRealityFeedbackHook(feedbackHook);
+if (!result.valid) {
+  console.error('Reality feedback hook invalid:', result.errors);
+}
+```
+
+---
+
+## Projection and Assessment Validators
+
+### `validateBenchmarkReadyOutput(output)`
+
+Validates a `SoilCompletionBenchmarkReadyOutput` object.
+
+**Input** `SoilCompletionBenchmarkReadyOutput`
+
+**Checks**
+- `activeBenchmarking` is `false` — active cross-tenant benchmarking and ranking are prohibited
+- Schema version matches `benchmark_ready_output_v1`
+- `outputId`, `correlationId`, and `auditReference` are present
+
+```typescript
+import { validateBenchmarkReadyOutput } from 'functions/src/soil/services';
+
+const result = validateBenchmarkReadyOutput(benchmarkOutput);
+if (!result.valid) {
+  console.error('Benchmark output invalid:', result.errors);
+}
+```
+
+---
+
+### `validateReadinessHorizonProjection(projection)`
+
+Validates a `SoilCompletionReadinessHorizonProjection` object.
+
+**Input** `SoilCompletionReadinessHorizonProjection`
+
+**Checks**
+- All four cases are present: `baseCase`, `upsideCase`, `downsideCase`, `stressCase`
+- Schema version matches `readiness_horizon_projection_v1`
+- `projectionId`, `scenarioRunId`, `correlationId`, and `auditReference` are present
+- `decisionSupportOnly` is `true`
+
+```typescript
+import { validateReadinessHorizonProjection } from 'functions/src/soil/services';
+
+const result = validateReadinessHorizonProjection(horizonProjection);
+if (!result.valid) {
+  console.error('Horizon projection invalid:', result.errors);
+}
+```
+
+---
+
+### `validateProjectedVsObserved(comparison)`
+
+Validates a `SoilCompletionProjectedVsObserved` comparison object.
+
+**Input** `SoilCompletionProjectedVsObserved`
+
+**Checks**
+- Both `projectedValues` and `observedValues` are present
+- `automaticModelChange` is `false` — automatic production model changes are prohibited
+- Schema version matches `projected_vs_observed_v1`
+- `comparisonId`, `scenarioRunId`, `correlationId`, and `auditReference` are present
+
+```typescript
+import { validateProjectedVsObserved } from 'functions/src/soil/services';
+
+const result = validateProjectedVsObserved(comparison);
+if (!result.valid) {
+  console.error('Projected vs. observed comparison invalid:', result.errors);
+}
+```
+
+---
+
+### `validateExecutiveReadinessAssessment(assessment)`
+
+Validates a `SoilCompletionExecutiveReadinessAssessment` and its three ledgers.
+
+**Input** `SoilCompletionExecutiveReadinessAssessment`
+
+**Checks**
+- `assessmentId`, `scenarioRunId`, `correlationId`, and `auditReference` are present
+- All three ledgers are present: `evidenceLedger`, `assumptionLedger`, `confidenceLedger`
+- `approvalStatus` is within the allowed posture vocabulary — prohibited values include `certified`, `authorized`, `compliance_pass`
+- Schema version matches `executive_readiness_assessment_v1`
+- `decisionSupportOnly` and `humanReviewRequired` are `true`
+
+```typescript
+import { validateExecutiveReadinessAssessment } from 'functions/src/soil/services';
+
+const result = validateExecutiveReadinessAssessment(executiveAssessment);
+if (!result.valid) {
+  console.error('Executive assessment invalid:', result.errors);
+}
+```
+
+<Warning>
+  The executive assessment validator explicitly rejects any object where `approvalStatus` contains certification, authorization, or external-validation-pass language. Only the governed posture vocabulary is accepted. See the [Type Contracts](/sdk/type-contracts) reference for the full list of allowed values.
+</Warning>
+
+---
+
+## Observability and Status Validators
+
+### `validateObservabilityTraceHook(trace)`
+
+Validates a `SoilCompletionObservabilityTraceHook` object.
+
+**Input** `SoilCompletionObservabilityTraceHook`
+
+**Checks**
+- `traceId`, `correlationId`, and `auditReference` are present
+- `objectIds` is a non-empty array
+- Schema version matches `observability_trace_hook_v1`
+
+```typescript
+import { validateObservabilityTraceHook } from 'functions/src/soil/services';
+
+const result = validateObservabilityTraceHook(trace);
+if (!result.valid) {
+  console.error('Observability trace invalid:', result.errors);
+}
+```
+
+---
+
+### `validateProtectedUseStatus(status)`
+
+Validates a `SoilCompletionProtectedUseStatus` hook object.
+
+**Input** `SoilCompletionProtectedUseStatus`
+
+**Checks**
+- `statusId`, `correlationId`, and `auditReference` are present
+- Schema version matches `protected_use_status_v1`
+- Required protected-use declaration fields are present
+
+```typescript
+import { validateProtectedUseStatus } from 'functions/src/soil/services';
+
+const result = validateProtectedUseStatus(protectedStatus);
+if (!result.valid) {
+  console.error('Protected-use status invalid:', result.errors);
+}
+```
+
+---
+
+### `validateAdminHubReadableSoilOutput(output)`
+
+Validates a `SoilCompletionAdminHubReadableSoilOutput` object.
+
+**Input** `SoilCompletionAdminHubReadableSoilOutput`
+
+**Checks**
+- `outputId`, `scenarioRunId`, `correlationId`, and `auditReference` are present
+- `executiveAssessment`, `observabilityTrace`, and `protectedUseStatus` references are populated
+- `approvalStatus` is within the allowed posture vocabulary
+- `decisionSupportOnly` and `humanReviewRequired` are `true`
+
+```typescript
+import { validateAdminHubReadableSoilOutput } from 'functions/src/soil/services';
+
+const result = validateAdminHubReadableSoilOutput(adminOutput);
+if (!result.valid) {
+  console.error('Admin Hub output invalid:', result.errors);
+}
+```
+
+---
+
+### `validateExportReadyObjectPackage(pkg)`
+
+Validates the complete `SoilCompletionExportReadyObjectPackage` — the final governed envelope for a pipeline run.
+
+**Input** `SoilCompletionExportReadyObjectPackage`
+
+**Checks**
+- `packageId`, `correlationId`, and `auditReference` are present
+- All required top-level objects are present: `scenarioRun`, `adminHubOutput`, `executiveAssessment`, `observabilityTrace`, `protectedUseStatus`
+- `approvalStatus` is within the allowed posture vocabulary
+- `decisionSupportOnly` and `humanReviewRequired` are `true` on the package-level fields
+- No prohibited unsafe output fields are present anywhere in the package
+
+```typescript
+import { validateExportReadyObjectPackage } from 'functions/src/soil/services';
+
+const result = validateExportReadyObjectPackage(exportPackage);
+if (!result.valid) {
+  console.error('Export package invalid:', result.errors);
+} else {
+  console.log('Package is valid and ready for export.');
+}
+```
+
+<Tip>
+  Run `validateExportReadyObjectPackage` as the final gate before handing off a pipeline run to any external consumer. It validates the package-level fields and checks that each required child object is structurally present — saving you from running each child validator individually in the final gate check.
+</Tip>

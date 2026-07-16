@@ -1,0 +1,101 @@
+---
+title: "BEL SOIL: Governed Decision-Support Analytics Platform"
+sidebarTitle: "Introduction"
+description: "BEL SOIL is a governed backend for sector-based scenario analysis and organizational readiness assessments that enforces human review on every output."
+---
+
+BEL SOIL is a governed decision-support backend built by BEL Technologies that helps organizations understand their readiness posture across regulated sectors. You use SOIL to run structured scenario analyses, model the impact of operational conditions and discrete events, and receive structured output objects that your human reviewers can act on with confidence. Every output SOIL produces is explicitly scoped to decision support — never to autonomous action.
+
+SOIL solves a specific problem: organizations operating in complex, regulated environments need a structured way to analyze how workplace conditions, financial pressures, and operational events interact to affect their readiness. SOIL provides that structure through governed sector packs, validated condition and event schemas, and a strict output posture that keeps human judgment at the center of every decision.
+
+---
+
+## What SOIL Does
+
+SOIL runs **scenario analyses** by assembling a set of active organizational conditions and discrete events, validating them against a **sector pack**, and returning structured output objects that describe readiness signals, projected trajectories, and executive-level summaries.
+
+A **sector pack** is the configuration object that tells SOIL which analytical domain to use. Each pack defines the permitted condition types, event types, output schemas, and guardrails appropriate for that domain. SOIL currently provides packs for workplace readiness and compliance, capital and public finance, and revenue and commercial environments.
+
+When you submit a scenario run request, SOIL:
+
+1. Validates your input conditions and events against the active sector pack.
+2. Assembles a structured scenario run object with readiness signals and state transitions.
+3. Generates downstream output objects — including Readiness Horizon projections, Executive Assessments, and Observability Traces — each carrying the required safety fields.
+4. Returns all outputs to you for human review and action.
+
+SOIL does **not** render maps, generate legal findings, score credibility, or issue final determinations. It produces structured, human-reviewable analytics objects — nothing more.
+
+---
+
+## Safety Posture
+
+Every output object that SOIL produces — regardless of sector pack, condition set, or analysis type — carries these three mandatory fields:
+
+```json
+{
+  "decisionSupportOnly": true,
+  "humanReviewRequired": true,
+  "approvalStatus": "READY_FOR_REVIEW"
+}
+```
+
+Here is what each field means for you as an operator or integrator:
+
+- **`decisionSupportOnly: true`** — The output is an analytical input to a human decision process. It is not itself a decision, a finding, or a directive. You must not treat it as one.
+- **`humanReviewRequired: true`** — A qualified human reviewer must evaluate the output before it informs any action, policy, or determination.
+- **`approvalStatus: READY_FOR_REVIEW`** — The output has passed SOIL's internal guardrails and is queued for your organization's review workflow. Final approval authority remains with BEL Technologies and your designated reviewers — it is never claimed by the system itself.
+
+<Warning>
+  SOIL outputs are not approved or finalized by the platform. `READY_FOR_REVIEW` means the output is ready for **your** reviewers to evaluate — not that BEL or SOIL has approved it for use. Do not route SOIL outputs directly to downstream automated systems without human review.
+</Warning>
+
+If SOIL's input validation rejects a request, the system returns a **safe failure response** rather than a partial or unsafe output. Safe failures also carry `decisionSupportOnly: true` and `humanReviewRequired: true`, and they include audit references so you can trace every rejection.
+
+---
+
+## Key Output Types
+
+<CardGroup cols={2}>
+  <Card title="Scenario Runs" icon="chart-line">
+    The core output object produced when you submit conditions and events against a sector pack. Contains `inputValidationStatus`, `approvalStatus`, readiness signals, and state transitions. Every scenario run is scoped to a SOIL session.
+  </Card>
+  <Card title="Sector Packs" icon="layer-group">
+    Configuration objects (`SectorPackConfig v2`) that define the analytical domain for a scenario run. Available packs: `hbx_workplace_readiness_compliance`, `capital_public_finance`, and `revenue_commercial`.
+  </Card>
+  <Card title="Readiness Horizon" icon="calendar-range">
+    A forward-looking projection object that models your organization's readiness trajectory across base, upside, downside, and stress cases. Used to support planning and risk conversations with reviewers.
+  </Card>
+  <Card title="Executive Assessment" icon="briefcase">
+    A summarized, human-reviewable readiness assessment object built for leadership-level review. Includes evidence, assumption, and confidence ledgers for full analytical traceability.
+  </Card>
+  <Card title="Observability Trace" icon="magnifying-glass">
+    An audit-grade trace object attached to every analysis run. Captures the analytical path SOIL followed so reviewers and auditors can verify how outputs were produced.
+  </Card>
+  <Card title="Safe Failure" icon="shield-exclamation">
+    When SOIL rejects an invalid or unsafe input, it returns a structured safe failure response — never a partial or unguarded output. Safe failures include sanitized audit events and rejection reason codes for full traceability.
+  </Card>
+</CardGroup>
+
+---
+
+## What SOIL Does NOT Do
+
+SOIL is purpose-scoped. The following categories of output or behavior are explicitly outside its design and are blocked by platform guardrails:
+
+<Warning>
+  **SOIL does not and will not:**
+
+  - Issue legal determinations, findings, or compliance rulings
+  - Provide medical diagnoses or health-related decisions
+  - Make or recommend employment actions for individuals
+  - Automatically recalibrate its models without human review
+  - Perform active cross-tenant benchmarking, ranking, or cohort analytics
+  - Render GIS maps, map tiles, or geographic visualizations
+  - Make autonomous final decisions of any kind
+  - Score individual credibility or allegation truth
+  - Produce financial advice or safety certifications
+</Warning>
+
+<Note>
+  If your integration requires any of the capabilities listed above, SOIL is not the right tool. Outputs that fall outside SOIL's governed scope are rejected at the input validation layer with a safe failure response — they are never silently passed through.
+</Note>

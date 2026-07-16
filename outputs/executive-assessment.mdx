@@ -1,0 +1,185 @@
+---
+title: "Executive Readiness Assessment Object in BEL SOIL"
+sidebarTitle: "Executive Assessment"
+description: "The Executive Readiness Assessment consolidates scenario findings into a reviewable summary with Evidence, Assumption, and Confidence ledgers."
+---
+
+The Executive Readiness Assessment is SOIL's top-level synthesis object. It consolidates the findings of a scenario run into a single, structured summary — including an overall readiness score, a readiness level classification, key findings, risk summary, and recommended next steps. This object is typically consumed by human reviewers, program leads, and organizational decision-makers who need a consolidated view of scenario results before taking action. It is always accompanied by three ledgers that document the evidence, assumptions, and confidence levels underlying the assessment.
+
+## Assessment Structure
+
+The `SoilCompletionExecutiveReadinessAssessment` type carries the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `overallReadinessScore` | `number` | A numeric readiness score for the scenario run |
+| `readinessLevel` | `enum` | Classification of readiness: `low`, `moderate`, `high`, or `requires_review` |
+| `keyFindings` | `string[]` | An ordered list of significant findings from the scenario analysis |
+| `riskSummary` | `string` | A plain-language summary of the primary risks identified |
+| `recommendedNextSteps` | `string[]` | Suggested reviewer actions — these are advisory, not directives |
+| `approvalStatus` | `string` | Always `READY_FOR_REVIEW` — not approved or certified |
+| `humanReviewRequired` | `boolean` | Always `true` |
+| `decisionSupportOnly` | `boolean` | Always `true` |
+
+The `readinessLevel` enum reflects the aggregate signal produced by the scenario run. A value of `requires_review` indicates the system detected conditions that prevent a clean classification and flags the output for mandatory human scrutiny.
+
+## The Three Ledgers
+
+Every Executive Readiness Assessment is paired with three `SoilCompletionLedger` objects. Each ledger is a structured record that makes the reasoning behind the assessment transparent and auditable.
+
+### Evidence Ledger
+
+The Evidence Ledger captures the source references, data points, and supporting observations that inform the assessment. It answers the question: *what data was present when this assessment was produced?*
+
+- Source references (condition IDs, event IDs, input object references)
+- Data points observed during the scenario run
+- Supporting observations surfaced by the analysis
+
+### Assumption Ledger
+
+The Assumption Ledger documents the stated assumptions that underlie the assessment. Because SOIL operates on structured inputs — not raw data — assumptions are first-class, explicitly declared parts of the output.
+
+- Assumptions present in the scenario run request
+- Assumptions introduced by sector-pack conditions and events
+- Assumptions carried forward by the builder at assessment time
+
+### Confidence Ledger
+
+The Confidence Ledger records the confidence values, uncertainty ranges, and data quality notes attached to the assessment.
+
+- Per-condition and per-event confidence scores (0.0–1.0)
+- Uncertainty ranges where confidence is bounded
+- Data quality notes flagging gaps, low-confidence inputs, or suppressed signals
+
+<Tip>
+When reviewing an Executive Readiness Assessment, start with the Confidence Ledger. Low confidence values or suppressed signals in the Confidence Ledger should inform how much weight you assign to the overall readiness score.
+</Tip>
+
+## Building the Assessment
+
+Use `buildExecutiveReadinessAssessment()` to produce the assessment object from a completed scenario run, then validate it with `validateExecutiveReadinessAssessment()` before forwarding it to a reviewer.
+
+```typescript
+import {
+  buildExecutiveReadinessAssessment,
+  validateExecutiveReadinessAssessment,
+} from "functions/src/soil/services/soilCompletion";
+
+const assessment = buildExecutiveReadinessAssessment({
+  scenarioRunId: "scenario_run_001",
+  tenantId: "tenant_demo",
+  organizationId: "org_demo",
+  sectorPackId: "hbx_workplace_readiness_compliance",
+  keyFindings: [
+    "Elevated EEO complaint activity in operations over 120-day window.",
+    "Workload pressure spike active in affected department.",
+  ],
+  riskSummary:
+    "Sustained reported activity combined with operational pressure indicates moderate readiness risk in the affected mission area.",
+  recommendedNextSteps: [
+    "Initiate human review of workplace compliance output.",
+    "Review OCM-10 handoff for change management guidance.",
+    "Reassess in 30 days against updated observed data.",
+  ],
+});
+
+const validationResult = validateExecutiveReadinessAssessment(assessment);
+
+if (!validationResult.ok) {
+  console.error("Assessment validation failed:", validationResult.errors);
+}
+```
+
+## Reading Assessment Output
+
+A validated Executive Readiness Assessment object looks like this:
+
+```json
+{
+  "scenarioRunId": "scenario_run_001",
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "overallReadinessScore": 0.58,
+  "readinessLevel": "moderate",
+  "keyFindings": [
+    "Elevated EEO complaint activity in operations over 120-day window.",
+    "Workload pressure spike active in affected department."
+  ],
+  "riskSummary": "Sustained reported activity combined with operational pressure indicates moderate readiness risk in the affected mission area.",
+  "recommendedNextSteps": [
+    "Initiate human review of workplace compliance output.",
+    "Review OCM-10 handoff for change management guidance.",
+    "Reassess in 30 days against updated observed data."
+  ],
+  "evidenceLedger": {
+    "ledgerType": "evidence",
+    "entries": [
+      {
+        "sourceRef": "eeo_complaint_activity",
+        "dataPoint": "intensity: elevated, durationDays: 120",
+        "observation": "Aggregated and source-authorized reported activity."
+      }
+    ]
+  },
+  "assumptionLedger": {
+    "ledgerType": "assumption",
+    "entries": [
+      { "assumption": "Activity is aggregated and source-authorized." },
+      { "assumption": "Reported activity is not a finding." }
+    ]
+  },
+  "confidenceLedger": {
+    "ledgerType": "confidence",
+    "entries": [
+      {
+        "sourceRef": "eeo_complaint_activity",
+        "confidenceScore": 0.71,
+        "uncertaintyNote": "Confidence bounded by availability of aggregated input only."
+      }
+    ]
+  },
+  "schemaVersion": "executive_readiness_assessment_v1",
+  "approvalStatus": "READY_FOR_REVIEW",
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true
+}
+```
+
+<Note>
+The Executive Readiness Assessment is decision support only. It does not constitute a compliance certification, safety certification, or employment determination. A qualified human reviewer must evaluate this output before it informs any consequential organizational action.
+</Note>
+
+## Admin Hub-Readable Format
+
+To produce a reviewer-ready version of the assessment formatted for the Admin Hub review surface, use `buildAdminHubReadableSoilOutput()`. This produces a `SoilCompletionAdminHubReadableSoilOutput` object that wraps the assessment alongside other run outputs in a structured, reviewable layout.
+
+```typescript
+import { buildAdminHubReadableSoilOutput } from "functions/src/soil/services/soilCompletion";
+
+const adminHubOutput = buildAdminHubReadableSoilOutput({
+  scenarioRun,
+  executiveReadinessAssessment: assessment,
+  // ... other run outputs
+});
+```
+
+The Admin Hub-readable output carries `approvalStatus: READY_FOR_REVIEW` and is validated by `validateAdminHubReadableSoilOutput()`.
+
+## Export Package
+
+To bundle the full assessment package — including ledgers, scenario run metadata, and all supporting output objects — into a single exportable artifact, use `buildExportReadyObjectPackage()`.
+
+```typescript
+import { buildExportReadyObjectPackage } from "functions/src/soil/services/soilCompletion";
+
+const exportPackage = buildExportReadyObjectPackage({
+  scenarioRun,
+  executiveReadinessAssessment: assessment,
+  observabilityTrace,
+  protectedUseStatus,
+  // ... full run output set
+});
+```
+
+The export package is validated by `validateExportReadyObjectPackage()` and is suitable for forwarding to external review systems, audit pipelines, or downstream program management workflows.

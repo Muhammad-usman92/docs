@@ -1,72 +1,86 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "BEL SOIL",
+  "theme": "luma",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#1A6B4A",
+    "light": "#E8F5EE",
+    "dark": "#0D3D28"
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "core-concepts"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/scenario-runs",
+              "guides/sector-packs",
+              "guides/workplace-compliance",
+              "guides/financial-scenarios",
+              "guides/environmental-output",
+              "guides/safe-failure"
+            ]
+          },
+          {
+            "group": "Output Objects",
+            "pages": [
+              "outputs/overview",
+              "outputs/executive-assessment",
+              "outputs/readiness-horizon",
+              "outputs/map-consumable",
+              "outputs/human-environment-fusion",
+              "outputs/observability-trace"
+            ]
+          },
+          {
+            "group": "Safety & Governance",
+            "pages": [
+              "governance/safety-posture",
+              "governance/protected-use",
+              "governance/approval-workflow"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/overview",
+              "api/health",
+              "api/sessions",
+              "api/scenario-runs"
+            ]
+          },
+          {
+            "group": "SDK Reference",
+            "pages": [
+              "sdk/builders",
+              "sdk/validators",
+              "sdk/type-contracts"
+            ]
+          }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
     ]
   },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Muhammad-usman92/bel-soil-doc"
     }
   }
 }

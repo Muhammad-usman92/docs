@@ -1,47 +1,262 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with BEL SOIL in Under 10 Minutes"
+sidebarTitle: "Quickstart"
+description: "Learn how to create a SOIL session, run your first scenario, and retrieve structured readiness output using the BEL SOIL REST API."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+By the end of this guide you will have verified that the BEL SOIL service is healthy, created a SOIL session, submitted your first scenario run against the `hbx_workplace_readiness_compliance` sector pack, and retrieved structured output with the correct human-review safety fields. You will also understand the approval posture you need to enforce in your integration before acting on any SOIL output.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+---
 
 ## Prerequisites
 
-Before you begin, you must have:
+<Note>
+  Before you begin, make sure you have the following:
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+  - A valid **`tenantId`** issued by BEL Technologies for your organization
+  - A valid **`organizationId`** scoped to your tenant
+  - API access configured for the BEL SOIL endpoint base URL (see below)
+  - A tool that can make HTTP requests — the examples below use `curl`, but any HTTP client works
+</Note>
 
-## Get started
+### Base URL
+
+All requests in this guide target the local Firebase emulator. Use this base URL:
+
+```text
+http://127.0.0.1:5001/demo-bel-soil-m1/us-central1
+```
+
+Replace this URL with your environment-specific endpoint when you deploy to a non-local environment.
+
+---
+
+## Steps
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Check Service Health">
+    Before creating any resources, confirm that the BEL SOIL service is running and healthy by calling the `/health` endpoint.
 
-    ```bash
-    npm install your-package
+    <CodeGroup>
+      ```bash curl
+      curl --request GET \
+        --url http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/health
+      ```
+    </CodeGroup>
+
+    A healthy service returns a response that includes `status: "ok"` and the active `belHealthVersion`:
+
+    ```json
+    {
+      "belHealthVersion": "v1",
+      "status": "ok",
+      "module": "bel-soil-m1",
+      "timestamp": "2024-01-01T00:00:00.000Z"
+    }
     ```
+
+    If you receive an error or a non-`ok` status, check that your local emulator is running before continuing.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
+  <Step title="Create a SOIL Session">
+    A SOIL session is the unit of context that binds your tenant, organization, and program together. All scenario runs you create in subsequent steps must be scoped to a session.
+
+    Send a `POST` request to `/createSoilSession` with your `tenantId`, `organizationId`, and `programId`:
+
+    <CodeGroup>
+      ```bash curl
+      curl --request POST \
+        --url http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/createSoilSession \
+        --header 'Content-Type: application/json' \
+        --data '{
+          "tenantId": "tenant_demo",
+          "organizationId": "org_demo",
+          "programId": "program_demo"
+        }'
+      ```
+    </CodeGroup>
+
+    A successful response returns a `soilSessionId` that you will use in the next step:
+
+    ```json
+    {
+      "ok": true,
+      "soilSessionId": "soil_session_abc123",
+      "tenantId": "tenant_demo",
+      "organizationId": "org_demo",
+      "programId": "program_demo",
+      "status": "active"
+    }
     ```
+
+    Copy the value of `soilSessionId` — you need it to create a scenario run.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
+  <Step title="Create a Scenario Run">
+    A scenario run assembles your organizational conditions and events, validates them against a sector pack, and produces a structured readiness output. Submit a `POST` request to `/createScenarioRun` with a fully populated request body.
+
+    The request below uses the `hbx_workplace_readiness_compliance` sector pack with one active workplace condition (`eeo_complaint_activity`) and one operational event (`workload_pressure_spike`). Replace `soilSessionId` with the value you received in Step 2.
+
+    <CodeGroup>
+      ```bash curl
+      curl --request POST \
+        --url http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/createScenarioRun \
+        --header 'Content-Type: application/json' \
+        --data '{
+          "scenarioId": "scenario_request_valid",
+          "soilSessionId": "soil_session_abc123",
+          "tenantId": "tenant_demo",
+          "organizationId": "org_demo",
+          "programId": "program_demo",
+          "sectorPackId": "hbx_workplace_readiness_compliance",
+          "sectorPackVersion": "v2",
+          "conditions": [
+            {
+              "conditionId": "eeo_complaint_activity",
+              "conditionVersion": "v1",
+              "category": "reported_activity",
+              "intensity": "elevated",
+              "durationDays": 120,
+              "affectedDepartments": ["department_operations"],
+              "affectedUnits": ["unit_north"],
+              "affectedLocations": ["facility_1"],
+              "affectedMissionAreas": ["service_delivery"],
+              "state": "active",
+              "trend": "worsening",
+              "confidence": 0.71,
+              "assumptions": ["Activity is aggregated and source-authorized."],
+              "limitations": ["Reported activity is not a finding."]
+            }
+          ],
+          "events": [
+            {
+              "eventId": "workload_pressure_spike",
+              "eventType": "operational_pressure",
+              "eventVersion": "v1",
+              "intensity": "elevated",
+              "durationDays": 45,
+              "affectedEntityIds": ["department_operations"],
+              "startState": "stable",
+              "endState": "review_required"
+            }
+          ],
+          "isSynthetic": true,
+          "humanReviewRequired": true,
+          "decisionSupportOnly": true,
+          "correlationId": "corr_request_valid",
+          "auditReference": "audit_request_valid",
+          "assumptions": ["Request-level scenario creation proof."]
+        }'
+      ```
+    </CodeGroup>
+
+    When the request is valid, SOIL accepts it and returns the following shape:
+
+    ```json
+    {
+      "ok": true,
+      "scenarioRun": {
+        "scenarioId": "scenario_request_valid",
+        "sectorPackId": "hbx_workplace_readiness_compliance",
+        "sectorPackVersion": "v2",
+        "inputValidationStatus": "accepted",
+        "isSynthetic": true,
+        "humanReviewRequired": true,
+        "decisionSupportOnly": true,
+        "approvalStatus": "READY_FOR_REVIEW"
+      },
+      "warnings": []
+    }
     ```
+
+    Note the `approvalStatus: "READY_FOR_REVIEW"` field — this confirms the output has passed SOIL's internal guardrails and is ready for your human reviewers. It does **not** mean the output has been approved for action.
+
+    If your request contains an unrecognized condition or a guardrail violation, SOIL returns a safe rejection response instead of a partial output:
+
+    ```json
+    {
+      "ok": false,
+      "outputStatus": "rejected",
+      "rejectionReasons": ["unknown_condition:unknown_condition"],
+      "safeFallbackOutput": {
+        "outputStatus": "rejected",
+        "decisionSupportOnly": true,
+        "humanReviewRequired": true,
+        "prohibitedUses": [
+          "No unsafe SOIL output generated from rejected input.",
+          "No final decision may be made from rejected input."
+        ],
+        "auditReference": "audit_failure",
+        "correlationId": "corr_failure"
+      },
+      "sanitizedAuditEvent": {
+        "auditEventId": "sanitized_audit_failure",
+        "eventType": "soil_completion_failure_path_rejected",
+        "status": "failure",
+        "sanitized": true,
+        "reasonCodes": ["unknown_condition:unknown_condition"],
+        "auditReference": "audit_failure",
+        "correlationId": "corr_failure"
+      }
+    }
+    ```
+
+    Use the `rejectionReasons` and `sanitizedAuditEvent` fields to diagnose and correct the issue before resubmitting.
+  </Step>
+
+  <Step title="Retrieve the Scenario Run">
+    After creation, you can retrieve a scenario run at any time using its `scenarioRunId`. Send a `GET` request to `/getScenarioRun`:
+
+    <CodeGroup>
+      ```bash curl
+      curl --request GET \
+        --url 'http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/getScenarioRun?scenarioRunId=scenario_request_valid'
+      ```
+    </CodeGroup>
+
+    The response includes the full scenario run object with all safety fields present:
+
+    ```json
+    {
+      "ok": true,
+      "scenarioRun": {
+        "scenarioId": "scenario_request_valid",
+        "soilSessionId": "soil_session_abc123",
+        "sectorPackId": "hbx_workplace_readiness_compliance",
+        "sectorPackVersion": "v2",
+        "inputValidationStatus": "accepted",
+        "approvalStatus": "READY_FOR_REVIEW",
+        "humanReviewRequired": true,
+        "decisionSupportOnly": true,
+        "isSynthetic": true,
+        "correlationId": "corr_request_valid",
+        "auditReference": "audit_request_valid"
+      }
+    }
+    ```
+
+    The three fields `approvalStatus`, `humanReviewRequired`, and `decisionSupportOnly` are present on every SOIL output — including retrieved records. Verify them in your integration before routing output to any downstream system.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+---
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+<Note>
+  **All SOIL outputs carry `approvalStatus: READY_FOR_REVIEW`.** This means the output is ready for human evaluation — not ready for automated action. Before your integration acts on any SOIL output, route it to qualified human reviewers and obtain explicit approval through your organization's review workflow.
+</Note>
+
+---
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Scenario Runs" icon="chart-line" href="guides/scenario-runs">
+    Learn how to structure conditions and events, interpret scenario run output fields, and handle safe failure responses in your integration.
+  </Card>
+  <Card title="Sector Packs" icon="layer-group" href="guides/sector-packs">
+    Explore the available sector packs, understand `SectorPackConfig v2`, and learn how to select the right pack for your organization's domain.
+  </Card>
+  <Card title="API Overview" icon="code" href="api/overview">
+    See the full endpoint reference for all active BEL SOIL REST API routes, request schemas, and response contracts.
+  </Card>
+</CardGroup>

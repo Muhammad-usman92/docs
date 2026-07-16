@@ -1,0 +1,178 @@
+---
+title: "Protected-Use Status: Governing Output Use in BEL SOIL"
+sidebarTitle: "Protected Use"
+description: "The Protected-Use Status Hook specifies permitted and prohibited uses for every SOIL output, ensuring outputs are consumed only for their intended purpose."
+---
+
+Every SOIL output is accompanied by a `SoilCompletionProtectedUseStatus` object — the Protected-Use Status Hook. This object is not informational boilerplate. It is a governed contract that defines exactly what a given output is permitted to be used for, what it is prohibited from being used for, and what posture vocabulary governs its consumption. The hook applies to every output produced by SOIL: scenario runs, executive readiness assessments, financial scenarios, environmental outputs, and full export packages alike. If your downstream workflow accepts a SOIL output without reading and honoring the protected-use status, you are operating outside the governed integration pattern.
+
+## Protected-Use Status Fields
+
+The `SoilCompletionProtectedUseStatus` object carries the following fields:
+
+<AccordionGroup>
+  <Accordion title="permittedUses[]">
+    An array of string identifiers listing the categories of use that are explicitly permitted for this output. Your integration should verify that your intended use appears in this list before forwarding the output to any downstream system.
+  </Accordion>
+
+  <Accordion title="prohibitedUses[]">
+    An array of string identifiers listing the categories of use that are explicitly prohibited. These are runtime-set restrictions derived from the safety posture of the output. If your intended downstream use matches any entry in this list, the output must not be forwarded.
+  </Accordion>
+
+  <Accordion title="useStatusVersion">
+    A version identifier for the use-status evaluation logic that produced this object. Retain this field in your audit records — it identifies the governed ruleset in effect at the time the output was produced.
+  </Accordion>
+
+  <Accordion title="protectedPostureVocabulary[]">
+    The controlled vocabulary list that governs this output's posture terms. All posture labels used in `permittedUses` and `prohibitedUses` are drawn from this list. See [Protected Posture Vocabulary](#protected-posture-vocabulary) below.
+  </Accordion>
+
+  <Accordion title="schemaVersion: protected_use_status_v1">
+    The schema version constant for this object. Always `protected_use_status_v1`. Use this to validate that your integration is consuming the current contract version.
+  </Accordion>
+
+  <Accordion title="humanReviewRequired">
+    Mirrors the top-level safety field. Confirms that this specific output requires human review before any downstream action. Always `true`.
+  </Accordion>
+
+  <Accordion title="decisionSupportOnly">
+    Mirrors the top-level safety field. Confirms that this output is for decision support only. Always `true`.
+  </Accordion>
+</AccordionGroup>
+
+## Permitted Uses
+
+SOIL outputs are designed and governed for the following categories of use. These are the values you will find in the `permittedUses[]` array.
+
+<CardGroup cols={2}>
+  <Card title="Internal Organizational Readiness Review" icon="building">
+    SOIL outputs are appropriate for internal review of organizational readiness across sectors, scenarios, and planning horizons. Use them to assess where your organization stands relative to projected conditions.
+  </Card>
+  <Card title="Human-Led Decision Support" icon="user-check">
+    Outputs are structured to support human decision-making at the executive, operational, and strategic levels. They provide evidence, assumptions, and confidence assessments — not conclusions.
+  </Card>
+  <Card title="Structured Audit and Compliance Documentation" icon="file-lines">
+    SOIL outputs, ledgers, and protected-use status objects are designed to be included in structured audit packages. They carry schema versions, correlation IDs, and audit references for traceability.
+  </Card>
+  <Card title="Scenario Planning and Horizon Analysis" icon="chart-line">
+    Readiness Horizon projections, base/upside/downside/stress cases, and projected-versus-observed comparisons are built for structured scenario planning workflows.
+  </Card>
+  <Card title="Executive Briefing and Strategic Review" icon="presentation-screen">
+    The Executive Readiness Assessment and Admin Hub readable output are structured for executive-level briefing and strategic review. They summarize evidence, assumptions, and confidence in a human-readable format.
+  </Card>
+</CardGroup>
+
+## Prohibited Uses
+
+<Warning>
+  The following uses are explicitly prohibited for all SOIL outputs. These restrictions are set at the time of output construction and are carried in the `prohibitedUses[]` array of every `SoilCompletionProtectedUseStatus` object.
+
+  - Individual employment decisions, performance reviews, or termination actions
+  - Legal proceedings as determinative or dispositive evidence
+  - Medical or clinical determination, diagnosis, or treatment recommendation
+  - Automated enforcement, automated action triggers, or autonomous downstream execution
+  - Public-facing reporting, publication, or external distribution without human review and approval
+  - Cross-tenant aggregation, benchmarking, or comparative ranking
+  - Financial advice, investment recommendations, or advisory services to third parties
+</Warning>
+
+If your intended use matches any of the above, you must not use the SOIL output for that purpose. Route the request to your legal, compliance, or governance team before proceeding.
+
+## Protected Posture Vocabulary
+
+The `protectedPostureVocabulary[]` array in the status object lists the controlled terms that govern this output's posture. These terms are drawn from the SOIL governance vocabulary and must be treated as binding labels in your integration.
+
+| Vocabulary Term | Meaning |
+|---|---|
+| `decision_support_only` | The output informs decisions but does not make them. |
+| `human_review_required` | A human reviewer must examine and accept the output before any action. |
+| `not_for_individual_determination` | The output must not be used to make determinations about specific individuals. |
+| `internal_use_only` | The output is scoped to internal organizational use and must not be externally distributed without review. |
+| `no_automated_action` | The output must not trigger automated enforcement, routing, or action without human intervention. |
+| `no_legal_determination` | The output must not be used as legal evidence or to render legal judgments. |
+| `no_compliance_certification` | The output does not constitute a compliance pass, certification, or regulatory clearance. |
+| `audit_documentation_permitted` | The output may be included in structured internal audit packages. |
+
+Your integration should read and log the full `protectedPostureVocabulary[]` array for each output. This list is version-controlled via `useStatusVersion` and may expand as the governed vocabulary grows.
+
+## Building Protected-Use Status
+
+Use the `buildProtectedUseStatus()` builder and the `validateProtectedUseStatus()` validator from the SOIL service layer to construct and verify protected-use status objects in your integration.
+
+```typescript
+import {
+  buildProtectedUseStatus,
+  validateProtectedUseStatus,
+} from 'functions/src/soil/services/soilCompletion';
+
+// Build the protected-use status object for an output
+const protectedUseStatus = buildProtectedUseStatus();
+
+// Validate the status object before attaching it to your audit package
+const validationResult = validateProtectedUseStatus(protectedUseStatus);
+
+if (!validationResult.valid) {
+  // Route to safe failure — do not proceed with an invalid status object
+  throw new Error(`Protected-use status validation failed: ${validationResult.reason}`);
+}
+
+// The validated object is ready to attach to your output and audit package
+console.log(protectedUseStatus.schemaVersion);       // protected_use_status_v1
+console.log(protectedUseStatus.humanReviewRequired); // true
+console.log(protectedUseStatus.decisionSupportOnly); // true
+console.log(protectedUseStatus.permittedUses);       // [...permitted categories]
+console.log(protectedUseStatus.prohibitedUses);      // [...prohibited categories]
+```
+
+A typical protected-use status object looks like this:
+
+```json
+{
+  "schemaVersion": "protected_use_status_v1",
+  "useStatusVersion": "1.0.0",
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true,
+  "permittedUses": [
+    "internal_organizational_readiness_review",
+    "human_led_decision_support",
+    "structured_audit_and_compliance_documentation",
+    "scenario_planning_and_horizon_analysis",
+    "executive_briefing_and_strategic_review"
+  ],
+  "prohibitedUses": [
+    "individual_employment_decisions",
+    "legal_proceedings_determinative_evidence",
+    "medical_or_clinical_determination",
+    "automated_enforcement_or_action",
+    "public_facing_reporting_without_human_review",
+    "cross_tenant_aggregation_or_benchmarking",
+    "financial_advice_to_third_parties"
+  ],
+  "protectedPostureVocabulary": [
+    "decision_support_only",
+    "human_review_required",
+    "not_for_individual_determination",
+    "internal_use_only",
+    "no_automated_action",
+    "no_legal_determination",
+    "no_compliance_certification",
+    "audit_documentation_permitted"
+  ]
+}
+```
+
+## Integrating Protected-Use Status in Your Workflow
+
+Follow these practices to ensure your integration honors the protected-use contract on every output:
+
+**Store the protected-use status alongside every output object.** Do not separate the status from the output it governs. If you store scenario runs, executive assessments, or financial scenarios in your data layer, the `SoilCompletionProtectedUseStatus` object must be stored as a sibling record with a matching `correlationId`.
+
+**Reference the status in your downstream review workflows.** When you route a SOIL output to a human reviewer, include the protected-use status object in the review package. Your reviewers should confirm that their intended action appears in `permittedUses[]` and does not appear in `prohibitedUses[]` before accepting the output.
+
+**Include the status in all audit packages.** Any audit package you produce from a SOIL output — whether for internal governance, regulatory documentation, or legal hold — must include the protected-use status object. The `useStatusVersion` and `schemaVersion` fields establish the governed ruleset in effect at the time of output production.
+
+**Validate the status before forwarding.** Call `validateProtectedUseStatus()` on every status object before including it in a downstream package. An invalid status object indicates a governed failure that must be resolved before the output proceeds.
+
+<Note>
+  The protected-use status object is automatically bundled in the full export package produced by `buildExportReadyObjectPackage()` and in the admin-readable output produced by `buildAdminHubReadableSoilOutput()`. If you use either of those builders as your primary export path, the protected-use status is already included — you do not need to attach it separately.
+</Note>

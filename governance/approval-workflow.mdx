@@ -1,0 +1,167 @@
+---
+title: "SOIL Approval Workflow and Review Process"
+sidebarTitle: "Approval Workflow"
+description: "Understand the READY_FOR_REVIEW approval posture, the review lifecycle, and how to route BEL SOIL outputs through your human review workflow."
+---
+
+SOIL does not approve its own outputs. Every output SOIL produces is delivered in `READY_FOR_REVIEW` posture — the analysis is complete, the objects are structured, the ledgers are populated, and the output is waiting for your reviewers. What happens next is your organization's responsibility. Your reviewers examine the output, apply their judgment, and progress it through your internal review lifecycle. SOIL provides the governed foundation; your human review process provides the final determination. This page explains the approval posture values, the recommended review lifecycle, and the export tools that make reviewer handoff straightforward.
+
+## Approval Status Values
+
+The `approvalStatus` field is present on every SOIL output object. It uses a controlled vocabulary. The table below describes each value and when it applies.
+
+| Status Value | Meaning |
+|---|---|
+| `not_assessed` | Analysis has not yet been run for this item. No output exists. |
+| `planned` | Analysis is scheduled but has not started. The item is queued. |
+| `in_progress` | Analysis is running or under initial internal review. Not ready for formal action. |
+| `ready_for_review` | Output is complete. Ready for human reviewer examination and action. **All SOIL outputs are delivered at this posture.** |
+| `verified_internal` | Internal review is complete. A human reviewer has examined and accepted the output within your governance process. Set by your system, not by SOIL. |
+| `external_validation_required` | Internal review is done, but external validation is required before action. Route here when your process mandates third-party or regulatory review. |
+| `requires_review` | A gap or unsupported path was identified. Output must be reviewed before any action is taken. See [Requires Review Gaps](#requires-review-gaps) below. |
+
+<Tip>
+  Your integration should map these values to your internal review state machine. Do not substitute free-text status labels or custom approval strings — use the controlled vocabulary exactly as defined. This ensures your audit trail remains aligned with the governed SOIL schema.
+</Tip>
+
+## The Review Lifecycle
+
+The standard review lifecycle for a SOIL output moves through the following steps. Your organization may add internal gates between steps, but the sequence must be preserved — no step may be skipped.
+
+<Steps>
+  <Step title="Run Scenario Analysis">
+    Call `createSoilCompletionScenarioRun()` or `createSoilCompletionScenarioRunFromRequest()` to produce a scenario output. SOIL assembles all objects — scenario run, financial scenarios, environmental output, executive assessment, ledgers, observability trace, and protected-use status — and returns them with `approvalStatus: READY_FOR_REVIEW` on every object.
+
+    ```typescript
+    import { createSoilCompletionScenarioRun } from 'functions/src/soil/services/soilCompletion';
+
+    const scenarioRun = await createSoilCompletionScenarioRun(request);
+
+    console.log(scenarioRun.approvalStatus); // READY_FOR_REVIEW
+    console.log(scenarioRun.humanReviewRequired); // true
+    console.log(scenarioRun.decisionSupportOnly); // true
+    ```
+  </Step>
+
+  <Step title="Route to Reviewer">
+    Use the `correlationId` and `auditReference` fields on the output objects to route the output to your review system. These identifiers link every object in the output package — scenario run, executive assessment, ledgers, observability trace, and protected-use status — so your reviewer can access the full picture from a single reference.
+
+    ```json
+    {
+      "correlationId": "soil-run-2024-001",
+      "auditReference": "audit-ref-2024-001",
+      "approvalStatus": "READY_FOR_REVIEW"
+    }
+    ```
+
+    If you use `buildExportReadyObjectPackage()`, the full package is pre-assembled for reviewer handoff. See [Export Package for Review](#export-package-for-review) below.
+  </Step>
+
+  <Step title="Human Review">
+    Your reviewer examines the complete output package. The review should cover all three ledgers:
+
+    - **Evidence Ledger** — the structured evidence supporting the scenario analysis
+    - **Assumption Ledger** — the explicit assumptions built into the analysis
+    - **Confidence Ledger** — the confidence levels assigned to each finding
+
+    The reviewer also examines the **Executive Readiness Assessment** for the summary narrative and the **Protected-Use Status** to confirm that the intended downstream action is within the permitted use scope.
+
+    No automated system may substitute for this step. `humanReviewRequired: true` is non-negotiable.
+  </Step>
+
+  <Step title="Internal Verification">
+    If the reviewer accepts the output, your system marks the output as `verified_internal`. SOIL does not set this value — it must be set by your authorized review system after a human reviewer has formally accepted the output.
+
+    Update your record with the verified status and record the reviewer identity, review timestamp, and any review notes in your audit package.
+  </Step>
+
+  <Step title="External Validation (If Required)">
+    If your governance process requires external validation — for example, regulatory review, third-party assurance, or legal sign-off — route the output to `external_validation_required` posture. The output must remain in this state until external validation is formally completed and recorded. Do not take downstream action on the output while it is in this state.
+  </Step>
+
+  <Step title="Action">
+    Only after your review process is complete — internal verification and any required external validation — may downstream action be taken based on the SOIL output. The output must never be the sole or automated basis for action. Human judgment and organizational authorization are required at every stage.
+  </Step>
+</Steps>
+
+## Prohibited Approval Language
+
+<Warning>
+  SOIL outputs must never be described using the following terms in any communication, report, system record, or downstream label. These terms are blocked in the executive validation logic and must not be applied by your integration either.
+
+  - **Certified** — SOIL does not certify outputs, findings, or assessments.
+  - **Approved** — SOIL outputs are `READY_FOR_REVIEW`, not approved. Your reviewers approve; SOIL does not.
+  - **Compliant** — SOIL does not issue compliance passes or compliance determinations.
+  - **Externally validated** — SOIL does not claim external validation. If your process requires it, route to `external_validation_required` and obtain it independently.
+  - **Authorized** — SOIL does not authorize actions, decisions, or determinations.
+
+  Using any of these terms to describe a SOIL output — in a report, a dashboard label, a data field, or verbal communication — misrepresents the governed posture of the output and violates the integration contract.
+</Warning>
+
+## Requires Review Gaps
+
+When SOIL identifies a gap or an unsupported analysis path, it does not attempt a partial or degraded analysis. Instead, it marks the relevant output with `approvalStatus: requires_review` and provides a structured rejection reason.
+
+A common example: if the aviation sector pack is not active in your governed configuration, any scenario run that touches the aviation sector returns `requires_review` with a clear reason explaining which pack is missing and why the analysis cannot proceed.
+
+This behavior is intentional. SOIL never claims to support something it cannot fully govern. The `requires_review` posture tells your reviewers exactly what happened and why — so they can either:
+
+1. **Resolve the gap** — activate the required sector pack, provide the missing configuration, or address the unsupported condition — and rerun the analysis, or
+2. **Formally acknowledge the gap** — document the limitation in your audit package and apply appropriate caveats to any downstream use of the output.
+
+You must not bypass a `requires_review` output. Treat it as a mandatory review trigger, not an error to be dismissed.
+
+```json
+{
+  "approvalStatus": "requires_review",
+  "rejectionReason": "aviation_sector_pack_not_active",
+  "decisionSupportOnly": true,
+  "humanReviewRequired": true
+}
+```
+
+## Export Package for Review
+
+SOIL provides two builder functions that produce pre-assembled, reviewer-ready output bundles. Use these as your standard handoff format — they ensure every required object is present and validated before the package reaches your reviewer.
+
+**`buildExportReadyObjectPackage()`** produces the full `SoilCompletionExportReadyObjectPackage`, which includes:
+
+- Sector pack config
+- Scenario run
+- Workplace compliance output
+- Map-consumable output
+- Human-Environment Fusion object
+- OCM-10 handoff
+- Reality feedback hook
+- Benchmark-ready output
+- Readiness Horizon projection
+- Projected-versus-observed comparison
+- Executive Readiness Assessment and all three ledgers
+- Observability Trace Hook
+- Protected-Use Status Hook
+- Package-level `approvalStatus: READY_FOR_REVIEW`
+
+**`buildAdminHubReadableSoilOutput()`** produces the `SoilCompletionAdminHubReadableSoilOutput` — a human-readable summary format structured for admin and executive review, with the same safety fields and protected-use status attached.
+
+```typescript
+import {
+  buildExportReadyObjectPackage,
+  buildAdminHubReadableSoilOutput,
+} from 'functions/src/soil/services/soilCompletion';
+
+// Full structured package for your review system
+const exportPackage = buildExportReadyObjectPackage(scenarioRun, allObjects);
+
+// Human-readable summary for admin/executive reviewers
+const adminOutput = buildAdminHubReadableSoilOutput(scenarioRun, summary);
+
+// Both carry the same governed posture
+console.log(exportPackage.approvalStatus); // READY_FOR_REVIEW
+console.log(adminOutput.approvalStatus);   // READY_FOR_REVIEW
+```
+
+Validate the package before routing it to your reviewers using `validateExportReadyObjectPackage()` and `validateAdminHubReadableSoilOutput()`.
+
+<Note>
+  BEL final approval is not claimed by SOIL. No SOIL output, export package, or builder function produces an approved, certified, or externally validated result. All final approval authority remains with your authorized reviewers and your organization's governance process. SOIL's role ends at `READY_FOR_REVIEW`.
+</Note>
