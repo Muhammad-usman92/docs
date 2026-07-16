@@ -71,7 +71,7 @@ Use `buildProjectedVsObserved()` to produce this comparison object and `validate
 import {
   buildProjectedVsObserved,
   validateProjectedVsObserved,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const comparison = buildProjectedVsObserved({
   priorProjectionReference: "readiness_horizon_run_001",
@@ -92,7 +92,7 @@ Use `buildReadinessHorizonProjection()` to produce the projection object from a 
 import {
   buildReadinessHorizonProjection,
   validateReadinessHorizonProjection,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const horizonProjection = buildReadinessHorizonProjection({
   scenarioRunId: "scenario_run_001",

@@ -1,7 +1,7 @@
 ---
 title: "BEL SOIL Output Objects: Complete Reference Overview"
 sidebarTitle: "Overview"
-description: "Every object produced by a BEL SOIL scenario run, including their schema versions, builder functions, and governance fields."
+description: "Every object produced by a BEL SOIL scenario run: schema versions, builder functions, validator pairs, and mandatory governance fields explained."
 ---
 
 Every BEL SOIL scenario run produces a structured package of output objects. Each object carries a declared schema version, a dedicated builder function, and a paired validator. All output objects — without exception — include the governance fields `decisionSupportOnly: true`, `humanReviewRequired: true`, and `approvalStatus: READY_FOR_REVIEW`. These fields are set by the SOIL runtime and cannot be overridden by callers.
@@ -15,7 +15,7 @@ The table below lists every output object produced by a SOIL scenario run, its s
 | `SectorPackConfig` | `sector_pack_config_v2` | Governs the analysis domain — sector, pack ID, and permitted condition types |
 | `ScenarioRun` | `scenario_run_v2` | Core scenario execution result, including input validation status and run metadata |
 | `WorkplaceComplianceOutput` | `workplace_compliance_output_v1` | Privacy-safe workplace readiness rollup with small-group suppression applied |
-| `EosEnvironmentalOutput` | `v1` (implied) | Environmental operating snapshot paired to the scenario run |
+| `EosEnvironmentalOutput` | — | Environmental operating snapshot paired to the scenario run |
 | `MapConsumableOutput` | `map_consumable_output_v1` | GIS-ready data contract containing location signals and readiness indicators — no rendering |
 | `HumanEnvironmentFusion` | `human_environment_fusion_v1` | Merged human-activity and environmental-condition signals producing a combined readiness signal |
 | `OCM10Handoff` | `ocm10_handoff_v1` | Organizational change management handoff object, linked to the fusion result |
@@ -29,10 +29,10 @@ The table below lists every output object produced by a SOIL scenario run, its s
 
 ## Full Sample Package
 
-`createSoilCompletionPhase1SamplePackage()` generates every object listed above in a single call. It is the canonical way to produce a complete, acceptance-tested output package for integration testing and review workflows.
+`createSoilCompletionPhase1SamplePackage()` generates every object listed above in a single call. It is the canonical way to produce a complete, fully validated output package for integration and review workflows.
 
 ```typescript
-import { createSoilCompletionPhase1SamplePackage } from "functions/src/soil/services/soilCompletion";
+import { createSoilCompletionPhase1SamplePackage } from "@bel/soil";
 
 const samplePackage = createSoilCompletionPhase1SamplePackage();
 

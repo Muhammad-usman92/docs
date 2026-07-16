@@ -1,7 +1,7 @@
 ---
 title: "Observability Trace Hook: Audit Trail for Every SOIL Run"
 sidebarTitle: "Observability Trace"
-description: "Every BEL SOIL scenario run produces an Observability Trace Hook — a structured audit record capturing inputs, outputs, guardrail evaluations, and timing."
+description: "Every SOIL scenario run produces an Observability Trace Hook — a structured audit record capturing inputs, outputs, guardrail evaluations, and timing."
 ---
 
 Every BEL SOIL scenario run — whether it succeeds, is rejected, or fails safe — produces an Observability Trace Hook. The trace exists to give you and your review team a complete, structured audit record of what happened during a run: what inputs were received, which guardrails were evaluated, whether suppression was applied, what output status was produced, and when all of this occurred. The trace is not an afterthought — it is a first-class output object, produced by the same governed builder-and-validator pattern as every other SOIL output. It is the primary record you use when investigating a run in a review workflow, escalation process, or external audit.
@@ -53,7 +53,7 @@ Use `buildObservabilityTrace()` to produce the trace object at the end of a run,
 import {
   buildObservabilityTrace,
   validateObservabilityTraceHook,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const trace = buildObservabilityTrace({
   scenarioRunId: "scenario_run_001",
@@ -126,7 +126,7 @@ Use `buildProtectedUseStatus()` to produce the status object and `validateProtec
 import {
   buildProtectedUseStatus,
   validateProtectedUseStatus,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const protectedUseStatus = buildProtectedUseStatus({
   scenarioRunId: "scenario_run_001",
@@ -186,7 +186,7 @@ Use `buildBenchmarkReadyOutput()` to produce the benchmark metadata object:
 import {
   buildBenchmarkReadyOutput,
   validateBenchmarkReadyOutput,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const benchmarkOutput = buildBenchmarkReadyOutput({
   scenarioRunId: "scenario_run_001",

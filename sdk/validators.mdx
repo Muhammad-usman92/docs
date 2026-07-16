@@ -1,5 +1,5 @@
 ---
-title: "BEL SOIL SDK Validator Functions Reference"
+title: "BEL SOIL SDK: All Validator Functions and Usage Guide"
 sidebarTitle: "Validators"
 description: "Validator functions in the BEL SOIL SDK check that objects conform to their schema contracts before use. Returns validation status and error arrays."
 ---
@@ -14,7 +14,7 @@ import {
   validateSoilCompletionScenarioRunRequest,
   validateExportReadyObjectPackage,
   // ...etc
-} from 'functions/src/soil/services';
+} from '@bel/soil';
 ```
 
 ---
@@ -56,7 +56,7 @@ Validates a `SoilCompletionSectorPackConfig` against the v2 schema contract.
 - `approvalStatus` is within the allowed posture vocabulary
 
 ```typescript
-import { validateSoilCompletionSectorPackConfig } from 'functions/src/soil/services';
+import { validateSoilCompletionSectorPackConfig } from '@bel/soil';
 
 const result = validateSoilCompletionSectorPackConfig(config);
 if (!result.valid) {
@@ -81,7 +81,7 @@ Validates a `SoilCompletionScenarioRunRequest` before it is submitted to the sce
 - No identity-rich fields are present in condition inputs
 
 ```typescript
-import { validateSoilCompletionScenarioRunRequest } from 'functions/src/soil/services';
+import { validateSoilCompletionScenarioRunRequest } from '@bel/soil';
 
 const result = validateSoilCompletionScenarioRunRequest(request);
 if (!result.valid) {
@@ -114,7 +114,7 @@ Validates a single `SoilCompletionEnvironmentalConditionInput` before it is pass
 - No GIS-rendering or geocoding fields are present — EOS inputs are contract-only
 
 ```typescript
-import { validateEosEnvironmentalConditionInput } from 'functions/src/soil/services';
+import { validateEosEnvironmentalConditionInput } from '@bel/soil';
 
 for (const input of conditionInputs) {
   const result = validateEosEnvironmentalConditionInput(input);
@@ -139,7 +139,7 @@ Validates a `SoilCompletionMapConsumableOutput` data contract.
 - No geocoding, tile, or frontend layer fields are present
 
 ```typescript
-import { validateMapConsumableOutput } from 'functions/src/soil/services';
+import { validateMapConsumableOutput } from '@bel/soil';
 
 const result = validateMapConsumableOutput(mapOutput);
 if (!result.valid) {
@@ -164,7 +164,7 @@ Validates a `SoilCompletionHumanEnvironmentFusion` object.
 - `decisionSupportOnly` and `humanReviewRequired` are `true`
 
 ```typescript
-import { validateHumanEnvironmentFusion } from 'functions/src/soil/services';
+import { validateHumanEnvironmentFusion } from '@bel/soil';
 
 const result = validateHumanEnvironmentFusion(fusion);
 if (!result.valid) {
@@ -186,7 +186,7 @@ Validates a `SoilCompletionOcm10Handoff` object against the OCM-10 schema contra
 - `correlationId` and `auditReference` are present
 
 ```typescript
-import { validateOcm10Handoff } from 'functions/src/soil/services';
+import { validateOcm10Handoff } from '@bel/soil';
 
 const result = validateOcm10Handoff(handoff);
 if (!result.valid) {
@@ -208,7 +208,7 @@ Validates a `SoilCompletionRealityFeedbackHook` object.
 - `hookId`, `correlationId`, and `auditReference` are present
 
 ```typescript
-import { validateRealityFeedbackHook } from 'functions/src/soil/services';
+import { validateRealityFeedbackHook } from '@bel/soil';
 
 const result = validateRealityFeedbackHook(feedbackHook);
 if (!result.valid) {
@@ -232,7 +232,7 @@ Validates a `SoilCompletionBenchmarkReadyOutput` object.
 - `outputId`, `correlationId`, and `auditReference` are present
 
 ```typescript
-import { validateBenchmarkReadyOutput } from 'functions/src/soil/services';
+import { validateBenchmarkReadyOutput } from '@bel/soil';
 
 const result = validateBenchmarkReadyOutput(benchmarkOutput);
 if (!result.valid) {
@@ -255,7 +255,7 @@ Validates a `SoilCompletionReadinessHorizonProjection` object.
 - `decisionSupportOnly` is `true`
 
 ```typescript
-import { validateReadinessHorizonProjection } from 'functions/src/soil/services';
+import { validateReadinessHorizonProjection } from '@bel/soil';
 
 const result = validateReadinessHorizonProjection(horizonProjection);
 if (!result.valid) {
@@ -278,7 +278,7 @@ Validates a `SoilCompletionProjectedVsObserved` comparison object.
 - `comparisonId`, `scenarioRunId`, `correlationId`, and `auditReference` are present
 
 ```typescript
-import { validateProjectedVsObserved } from 'functions/src/soil/services';
+import { validateProjectedVsObserved } from '@bel/soil';
 
 const result = validateProjectedVsObserved(comparison);
 if (!result.valid) {
@@ -302,7 +302,7 @@ Validates a `SoilCompletionExecutiveReadinessAssessment` and its three ledgers.
 - `decisionSupportOnly` and `humanReviewRequired` are `true`
 
 ```typescript
-import { validateExecutiveReadinessAssessment } from 'functions/src/soil/services';
+import { validateExecutiveReadinessAssessment } from '@bel/soil';
 
 const result = validateExecutiveReadinessAssessment(executiveAssessment);
 if (!result.valid) {
@@ -330,7 +330,7 @@ Validates a `SoilCompletionObservabilityTraceHook` object.
 - Schema version matches `observability_trace_hook_v1`
 
 ```typescript
-import { validateObservabilityTraceHook } from 'functions/src/soil/services';
+import { validateObservabilityTraceHook } from '@bel/soil';
 
 const result = validateObservabilityTraceHook(trace);
 if (!result.valid) {
@@ -352,7 +352,7 @@ Validates a `SoilCompletionProtectedUseStatus` hook object.
 - Required protected-use declaration fields are present
 
 ```typescript
-import { validateProtectedUseStatus } from 'functions/src/soil/services';
+import { validateProtectedUseStatus } from '@bel/soil';
 
 const result = validateProtectedUseStatus(protectedStatus);
 if (!result.valid) {
@@ -375,7 +375,7 @@ Validates a `SoilCompletionAdminHubReadableSoilOutput` object.
 - `decisionSupportOnly` and `humanReviewRequired` are `true`
 
 ```typescript
-import { validateAdminHubReadableSoilOutput } from 'functions/src/soil/services';
+import { validateAdminHubReadableSoilOutput } from '@bel/soil';
 
 const result = validateAdminHubReadableSoilOutput(adminOutput);
 if (!result.valid) {
@@ -399,7 +399,7 @@ Validates the complete `SoilCompletionExportReadyObjectPackage` — the final go
 - No prohibited unsafe output fields are present anywhere in the package
 
 ```typescript
-import { validateExportReadyObjectPackage } from 'functions/src/soil/services';
+import { validateExportReadyObjectPackage } from '@bel/soil';
 
 const result = validateExportReadyObjectPackage(exportPackage);
 if (!result.valid) {

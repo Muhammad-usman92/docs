@@ -63,7 +63,7 @@ Use `buildExecutiveReadinessAssessment()` to produce the assessment object from 
 import {
   buildExecutiveReadinessAssessment,
   validateExecutiveReadinessAssessment,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const assessment = buildExecutiveReadinessAssessment({
   scenarioRunId: "scenario_run_001",
@@ -155,7 +155,7 @@ The Executive Readiness Assessment is decision support only. It does not constit
 To produce a reviewer-ready version of the assessment formatted for the Admin Hub review surface, use `buildAdminHubReadableSoilOutput()`. This produces a `SoilCompletionAdminHubReadableSoilOutput` object that wraps the assessment alongside other run outputs in a structured, reviewable layout.
 
 ```typescript
-import { buildAdminHubReadableSoilOutput } from "functions/src/soil/services/soilCompletion";
+import { buildAdminHubReadableSoilOutput } from "@bel/soil";
 
 const adminHubOutput = buildAdminHubReadableSoilOutput({
   scenarioRun,
@@ -171,7 +171,7 @@ The Admin Hub-readable output carries `approvalStatus: READY_FOR_REVIEW` and is 
 To bundle the full assessment package — including ledgers, scenario run metadata, and all supporting output objects — into a single exportable artifact, use `buildExportReadyObjectPackage()`.
 
 ```typescript
-import { buildExportReadyObjectPackage } from "functions/src/soil/services/soilCompletion";
+import { buildExportReadyObjectPackage } from "@bel/soil";
 
 const exportPackage = buildExportReadyObjectPackage({
   scenarioRun,

@@ -1,7 +1,7 @@
 ---
-title: "BEL SOIL REST API Overview and Base URL"
+title: "BEL SOIL REST API — Overview and Reference Guide"
 sidebarTitle: "Overview"
-description: "Overview of the BEL SOIL REST API — base URL, request format, response structure, common error codes, and governance requirements."
+description: "Overview of the BEL SOIL REST API: base URL, request and response format, error codes, idempotency, and governance field requirements."
 ---
 
 The BEL SOIL REST API gives you programmatic access to the governed decision-support backend for sector-based scenario analysis. You interact with it over HTTPS using standard JSON requests and receive structured JSON responses that carry both output data and governance metadata. Every response includes explicit safety posture fields so that downstream consumers always know the review status and permitted uses of any result.
@@ -10,13 +10,9 @@ The BEL SOIL REST API gives you programmatic access to the governed decision-sup
 
 ## Base URL
 
-All endpoints are served under a single base URL. Append the endpoint path directly to this base.
+All endpoints are served under a single base URL. Append the endpoint path directly to this base:
 
-<Note>
-  The base URL below points to the **local Firebase emulator**. You must have the emulator running before making any requests. Replace this URL with your production base URL when you move to a deployed environment.
-</Note>
-
-```
+```text
 http://127.0.0.1:5001/demo-bel-soil-m1/us-central1
 ```
 
@@ -26,7 +22,7 @@ http://127.0.0.1:5001/demo-bel-soil-m1/us-central1
 
 All mutating requests (`POST`) must send a JSON body and include the `Content-Type: application/json` header.
 
-```bash
+```text
 Content-Type: application/json
 ```
 

@@ -1,5 +1,5 @@
 ---
-title: "BEL SOIL SDK Builder Functions Reference"
+title: "BEL SOIL SDK: All Builder Functions and Usage Guide"
 sidebarTitle: "Builders"
 description: "Complete reference for every builder function exported by the BEL SOIL SDK — from SectorPackConfig to Executive Readiness Assessment and export packages."
 ---
@@ -8,7 +8,7 @@ Builder functions in BEL SOIL construct validated, governance-compliant output o
 
 ## Import Path
 
-Import any builder directly from the services barrel:
+Import any builder directly from the package barrel:
 
 ```typescript
 import {
@@ -18,7 +18,7 @@ import {
   buildExportReadyObjectPackage,
   createSoilCompletionPhase1SamplePackage,
   // ...etc
-} from 'functions/src/soil/services';
+} from '@bel/soil';
 ```
 
 ---
@@ -42,7 +42,7 @@ function buildDefaultSoilCompletionSectorPackConfig(): SoilCompletionSectorPackC
 **Usage**
 
 ```typescript
-import { buildDefaultSoilCompletionSectorPackConfig } from 'functions/src/soil/services';
+import { buildDefaultSoilCompletionSectorPackConfig } from '@bel/soil';
 
 const config = buildDefaultSoilCompletionSectorPackConfig();
 // config.sectorPackId === 'hbx_workplace_readiness_compliance'
@@ -73,7 +73,7 @@ function buildCapitalPublicFinancePackConfig(): SoilCompletionSectorPackConfig
 **Usage**
 
 ```typescript
-import { buildCapitalPublicFinancePackConfig } from 'functions/src/soil/services';
+import { buildCapitalPublicFinancePackConfig } from '@bel/soil';
 
 const config = buildCapitalPublicFinancePackConfig();
 // config.sectorPackId === 'capital_public_finance'
@@ -97,7 +97,7 @@ function buildRevenueCommercialPackConfig(): SoilCompletionSectorPackConfig
 **Usage**
 
 ```typescript
-import { buildRevenueCommercialPackConfig } from 'functions/src/soil/services';
+import { buildRevenueCommercialPackConfig } from '@bel/soil';
 
 const config = buildRevenueCommercialPackConfig();
 // config.sectorPackId === 'revenue_commercial'
@@ -143,7 +143,7 @@ function createSoilCompletionScenarioRun(
 import {
   buildDefaultSoilCompletionSectorPackConfig,
   createSoilCompletionScenarioRun,
-} from 'functions/src/soil/services';
+} from '@bel/soil';
 
 const config = buildDefaultSoilCompletionSectorPackConfig();
 
@@ -184,8 +184,8 @@ function createSoilCompletionScenarioRunFromRequest(
 **Usage**
 
 ```typescript
-import { createSoilCompletionScenarioRunFromRequest } from 'functions/src/soil/services';
-import type { SoilCompletionScenarioRunRequest } from 'functions/src/soil/models';
+import { createSoilCompletionScenarioRunFromRequest } from '@bel/soil';
+import type { SoilCompletionScenarioRunRequest } from '@bel/soil';
 
 const request: SoilCompletionScenarioRunRequest = {
   scenarioId: 'scenario_request_valid',
@@ -233,7 +233,7 @@ function buildSoilCompletionSafeFailureResponse(
 **Usage**
 
 ```typescript
-import { buildSoilCompletionSafeFailureResponse } from 'functions/src/soil/services';
+import { buildSoilCompletionSafeFailureResponse } from '@bel/soil';
 
 const failure = buildSoilCompletionSafeFailureResponse(
   ['unknown_condition:unknown_condition'],
@@ -279,7 +279,7 @@ function buildFinancialReadinessScenario(params: {
 **Usage**
 
 ```typescript
-import { buildFinancialReadinessScenario } from 'functions/src/soil/services';
+import { buildFinancialReadinessScenario } from '@bel/soil';
 
 const capitalScenario = buildFinancialReadinessScenario({
   scenarioId: 'capital_scenario_001',
@@ -318,7 +318,7 @@ function buildEosEnvironmentalOutput(
 **Usage**
 
 ```typescript
-import { buildEosEnvironmentalOutput } from 'functions/src/soil/services';
+import { buildEosEnvironmentalOutput } from '@bel/soil';
 
 const eosOutput = buildEosEnvironmentalOutput(
   [/* environmental condition inputs */],
@@ -359,7 +359,7 @@ function evaluateWorkplaceCompliance(
 **Usage**
 
 ```typescript
-import { evaluateWorkplaceCompliance } from 'functions/src/soil/services';
+import { evaluateWorkplaceCompliance } from '@bel/soil';
 
 const complianceOutput = evaluateWorkplaceCompliance(
   [/* workplace condition inputs */],
@@ -401,7 +401,7 @@ function buildMapConsumableOutput(
 **Usage**
 
 ```typescript
-import { buildMapConsumableOutput } from 'functions/src/soil/services';
+import { buildMapConsumableOutput } from '@bel/soil';
 
 const mapOutput = buildMapConsumableOutput(
   [/* location signal objects */],
@@ -440,7 +440,7 @@ function buildHumanEnvironmentFusion(
 **Usage**
 
 ```typescript
-import { buildHumanEnvironmentFusion } from 'functions/src/soil/services';
+import { buildHumanEnvironmentFusion } from '@bel/soil';
 
 const fusion = buildHumanEnvironmentFusion(
   [/* human signals */],
@@ -478,7 +478,7 @@ function buildOcm10Handoff(
 **Usage**
 
 ```typescript
-import { buildOcm10Handoff } from 'functions/src/soil/services';
+import { buildOcm10Handoff } from '@bel/soil';
 
 const handoff = buildOcm10Handoff(fusion.fusionId, {
   handoffId: 'ocm10_handoff_001',
@@ -511,7 +511,7 @@ function buildRealityFeedbackHook(options: {
 **Usage**
 
 ```typescript
-import { buildRealityFeedbackHook } from 'functions/src/soil/services';
+import { buildRealityFeedbackHook } from '@bel/soil';
 
 const feedbackHook = buildRealityFeedbackHook({
   hookId: 'feedback_hook_001',
@@ -547,7 +547,7 @@ function buildBenchmarkReadyOutput(options: {
 **Usage**
 
 ```typescript
-import { buildBenchmarkReadyOutput } from 'functions/src/soil/services';
+import { buildBenchmarkReadyOutput } from '@bel/soil';
 
 const benchmarkOutput = buildBenchmarkReadyOutput({
   outputId: 'benchmark_output_001',
@@ -585,7 +585,7 @@ function buildReadinessHorizonProjection(params: {
 **Usage**
 
 ```typescript
-import { buildReadinessHorizonProjection } from 'functions/src/soil/services';
+import { buildReadinessHorizonProjection } from '@bel/soil';
 
 const horizonProjection = buildReadinessHorizonProjection({
   projectionId: 'horizon_001',
@@ -626,7 +626,7 @@ function buildProjectedVsObserved(params: {
 **Usage**
 
 ```typescript
-import { buildProjectedVsObserved } from 'functions/src/soil/services';
+import { buildProjectedVsObserved } from '@bel/soil';
 
 const comparison = buildProjectedVsObserved({
   comparisonId: 'pvo_001',
@@ -667,7 +667,7 @@ function buildExecutiveReadinessAssessment(params: {
 **Usage**
 
 ```typescript
-import { buildExecutiveReadinessAssessment } from 'functions/src/soil/services';
+import { buildExecutiveReadinessAssessment } from '@bel/soil';
 
 const executiveAssessment = buildExecutiveReadinessAssessment({
   assessmentId: 'exec_assessment_001',
@@ -711,7 +711,7 @@ function buildObservabilityTrace(params: {
 **Usage**
 
 ```typescript
-import { buildObservabilityTrace } from 'functions/src/soil/services';
+import { buildObservabilityTrace } from '@bel/soil';
 
 const trace = buildObservabilityTrace({
   traceId: 'trace_001',
@@ -748,7 +748,7 @@ function buildProtectedUseStatus(options: {
 **Usage**
 
 ```typescript
-import { buildProtectedUseStatus } from 'functions/src/soil/services';
+import { buildProtectedUseStatus } from '@bel/soil';
 
 const protectedStatus = buildProtectedUseStatus({
   statusId: 'protected_status_001',
@@ -783,7 +783,7 @@ function buildAdminHubReadableSoilOutput(params: {
 **Usage**
 
 ```typescript
-import { buildAdminHubReadableSoilOutput } from 'functions/src/soil/services';
+import { buildAdminHubReadableSoilOutput } from '@bel/soil';
 
 const adminOutput = buildAdminHubReadableSoilOutput({
   outputId: 'admin_output_001',
@@ -824,7 +824,7 @@ function buildExportReadyObjectPackage(params: {
 **Usage**
 
 ```typescript
-import { buildExportReadyObjectPackage } from 'functions/src/soil/services';
+import { buildExportReadyObjectPackage } from '@bel/soil';
 
 const exportPackage = buildExportReadyObjectPackage({
   packageId: 'export_package_001',
@@ -857,7 +857,7 @@ function createSoilCompletionPhase1SamplePackage(): SoilCompletionPhase1SamplePa
 **Usage**
 
 ```typescript
-import { createSoilCompletionPhase1SamplePackage } from 'functions/src/soil/services';
+import { createSoilCompletionPhase1SamplePackage } from '@bel/soil';
 
 const sample = createSoilCompletionPhase1SamplePackage();
 

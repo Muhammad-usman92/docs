@@ -1,7 +1,7 @@
 ---
 title: "Scenario Run API: Create and Retrieve Scenario Runs"
 sidebarTitle: "Scenario Runs"
-description: "POST /createScenarioRun runs sector-based scenario analysis. GET /getScenarioRun retrieves the resulting output. Both require valid session and sector pack configuration."
+description: "POST /createScenarioRun submits a governed sector-based scenario. GET /getScenarioRun retrieves the run output by ID. Both require a valid session."
 ---
 
 `createScenarioRun` and `getScenarioRun` are the two endpoints at the core of the BEL SOIL analysis workflow. You use `createScenarioRun` to submit a fully-specified scenario — including conditions, events, sector pack configuration, and governance declarations — and receive back a structured run object with an approval status. You then use `getScenarioRun` to retrieve that run object by ID at any later point. Both endpoints require a valid `soilSessionId` from a previously created session, and both enforce the governance fields that ensure all output remains in decision-support posture.
@@ -74,7 +74,61 @@ Submits a scenario run request with conditions, events, and a sector pack specif
   Request-level assumption statements. These are stored on the run record and can be referenced in the Evidence Ledger and Assumption Ledger objects produced by the full completion package.
 </ParamField>
 
-### Full sample request
+### Request
+
+```bash
+curl -X POST http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/createScenarioRun \
+  -H "Content-Type: application/json" \
+  -d @- <<'EOF'
+{
+  "scenarioId": "scenario_request_valid",
+  "soilSessionId": "soil_session_request_valid",
+  "tenantId": "tenant_demo",
+  "organizationId": "org_demo",
+  "programId": "program_demo",
+  "sectorPackId": "hbx_workplace_readiness_compliance",
+  "sectorPackVersion": "v2",
+  "conditions": [
+    {
+      "conditionId": "eeo_complaint_activity",
+      "conditionVersion": "v1",
+      "category": "reported_activity",
+      "intensity": "elevated",
+      "durationDays": 120,
+      "affectedDepartments": ["department_operations"],
+      "affectedUnits": ["unit_north"],
+      "affectedLocations": ["facility_1"],
+      "affectedMissionAreas": ["service_delivery"],
+      "state": "active",
+      "trend": "worsening",
+      "confidence": 0.71,
+      "assumptions": ["Activity is aggregated and source-authorized."],
+      "limitations": ["Reported activity is not a finding."]
+    }
+  ],
+  "events": [
+    {
+      "eventId": "workload_pressure_spike",
+      "eventType": "operational_pressure",
+      "eventVersion": "v1",
+      "intensity": "elevated",
+      "durationDays": 45,
+      "affectedEntityIds": ["department_operations"],
+      "startState": "stable",
+      "endState": "review_required"
+    }
+  ],
+  "isSynthetic": true,
+  "humanReviewRequired": true,
+  "decisionSupportOnly": true,
+  "correlationId": "corr_request_valid",
+  "auditReference": "audit_request_valid",
+  "assumptions": ["Request-level scenario creation proof."]
+}
+EOF
+```
+
+### Full sample request body
 
 ```json
 {
@@ -272,5 +326,5 @@ curl "http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/getScenarioRun?scenario
 </ResponseField>
 
 <Note>
-  The REST endpoint returns the **core scenario run object**. The full M2 output package — which includes the spike ledger, workplace compliance output, map-consumable output, Human-Environment Fusion object, OCM-10 handoff, Reality Feedback Hook, Readiness Horizon projection, projected-vs-observed comparison, Executive Readiness Assessment, Evidence Ledger, Assumption Ledger, Confidence Ledger, Observability Trace Hook, and Protected-Use Status Hook — is accessed through the backend SDK function `createSoilCompletionPhase1SamplePackage()`. See the source proof map in the M2 handoff for export paths.
+  Every retrieved scenario run carries `humanReviewRequired: true` and `decisionSupportOnly: true` regardless of when it was created. The `approvalStatus` field reflects the current review state and remains `"READY_FOR_REVIEW"` until a human reviewer acts on the output.
 </Note>

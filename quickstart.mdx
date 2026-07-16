@@ -1,7 +1,7 @@
 ---
-title: "Get Started with BEL SOIL in Under 10 Minutes"
+title: "Get Started with BEL SOIL: Your First Scenario Run"
 sidebarTitle: "Quickstart"
-description: "Learn how to create a SOIL session, run your first scenario, and retrieve structured readiness output using the BEL SOIL REST API."
+description: "Learn how to create a SOIL session, run your first scenario against a sector pack, and retrieve structured readiness output using the BEL SOIL REST API."
 ---
 
 By the end of this guide you will have verified that the BEL SOIL service is healthy, created a SOIL session, submitted your first scenario run against the `hbx_workplace_readiness_compliance` sector pack, and retrieved structured output with the correct human-review safety fields. You will also understand the approval posture you need to enforce in your integration before acting on any SOIL output.
@@ -89,13 +89,39 @@ Replace this URL with your environment-specific endpoint when you deploy to a no
     }
     ```
 
-    Copy the value of `soilSessionId` — you need it to create a scenario run.
+    Copy the value of `soilSessionId` — you need it in the following steps.
+  </Step>
+
+  <Step title="Retrieve the SOIL Session">
+    You can read back a session at any time to confirm its status and scope. Send a `GET` request to `/getSoilSession` with the `soilSessionId` you received in the previous step:
+
+    <CodeGroup>
+      ```bash curl
+      curl --request GET \
+        --url 'http://127.0.0.1:5001/demo-bel-soil-m1/us-central1/getSoilSession?soilSessionId=soil_session_abc123'
+      ```
+    </CodeGroup>
+
+    A successful response echoes back the session record:
+
+    ```json
+    {
+      "ok": true,
+      "soilSessionId": "soil_session_abc123",
+      "tenantId": "tenant_demo",
+      "organizationId": "org_demo",
+      "programId": "program_demo",
+      "status": "active"
+    }
+    ```
+
+    Verify that `status` is `"active"` before you submit a scenario run. A session that is not active will cause your scenario run to fail input validation.
   </Step>
 
   <Step title="Create a Scenario Run">
     A scenario run assembles your organizational conditions and events, validates them against a sector pack, and produces a structured readiness output. Submit a `POST` request to `/createScenarioRun` with a fully populated request body.
 
-    The request below uses the `hbx_workplace_readiness_compliance` sector pack with one active workplace condition (`eeo_complaint_activity`) and one operational event (`workload_pressure_spike`). Replace `soilSessionId` with the value you received in Step 2.
+    The request below uses the `hbx_workplace_readiness_compliance` sector pack with one active workplace condition (`eeo_complaint_activity`) and one operational event (`workload_pressure_spike`). Replace `soilSessionId` with the value you received in Step 2 and confirmed in Step 3.
 
     <CodeGroup>
       ```bash curl

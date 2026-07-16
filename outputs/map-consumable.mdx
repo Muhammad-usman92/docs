@@ -1,7 +1,7 @@
 ---
 title: "Map-Consumable Output Contract for GIS Integration"
 sidebarTitle: "Map Consumable"
-description: "The SOIL map-consumable output provides a structured data contract for GIS integration. It contains location signals and readiness indicators — no rendered maps or tiles."
+description: "SOIL's map-consumable output is a typed GIS data contract with location signals and readiness indicators. No rendering, tiles, or geocoding included."
 ---
 
 The map-consumable output is SOIL's structured data contract for location-aware scenario analysis. It packages location signals and readiness indicators derived from a scenario run into a format designed to feed into your own GIS rendering pipeline. It does not render maps, produce map tiles, perform geocoding, or assemble GIS layers — those responsibilities belong to the system that consumes this output. Think of it as a typed, governed handoff object that bridges SOIL's analysis layer and your visualization or spatial-analysis tooling.
@@ -51,7 +51,7 @@ Use `buildMapConsumableOutput()` to produce the map-consumable output from a com
 import {
   buildMapConsumableOutput,
   validateMapConsumableOutput,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const mapOutput = buildMapConsumableOutput({
   scenarioRunId: "scenario_run_001",
@@ -138,7 +138,7 @@ The map-consumable output is designed to be produced alongside the EOS Environme
 import {
   buildMapConsumableOutput,
   buildEosEnvironmentalOutput,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 // Produce both outputs from the same scenario run context
 const mapOutput = buildMapConsumableOutput({ scenarioRunId, ...locationParams });

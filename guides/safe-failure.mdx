@@ -1,7 +1,7 @@
 ---
 title: "Safe Failure Responses and Audit Events in BEL SOIL"
 sidebarTitle: "Safe Failure"
-description: "Understand how BEL SOIL handles invalid or unsafe inputs — producing rejected safe fallback responses and sanitized audit events instead of unsafe output."
+description: "Learn how BEL SOIL handles invalid inputs with safe fallback responses, rejection reasons, and sanitized audit events instead of unsafe output."
 ---
 
 BEL SOIL's core safety guarantee is simple: **unsafe inputs never produce unsafe outputs.** When SOIL receives a request it cannot process safely — because of an unrecognized condition, a blocked sector pack, a governance violation, or an identity-rich input — it does not silently fail, return partial output, or produce a best-effort result. Instead, it returns a fully structured **safe failure response**: a governed rejection object containing the reason for rejection, a safe fallback output block, and a sanitized audit event. Your integration can rely on this behavior being predictable and consistent.

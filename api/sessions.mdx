@@ -1,7 +1,7 @@
 ---
 title: "SOIL Session Management: Create and Retrieve Sessions"
 sidebarTitle: "Sessions"
-description: "POST /createSoilSession creates a session context for scenario analysis. GET /getSoilSession retrieves an existing session by ID."
+description: "POST /createSoilSession creates a session context for scenario analysis. GET /getSoilSession retrieves an existing session by its ID."
 ---
 
 A SOIL session is the top-level context object that binds your tenant, organization, and program identity to a unit of scenario analysis work. You must create a session before you can submit any scenario runs — the `soilSessionId` returned by `createSoilSession` is a required field on every `createScenarioRun` request. Sessions are immutable once created; you retrieve them by ID when you need to inspect their state or pass their identifier to downstream calls.

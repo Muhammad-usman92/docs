@@ -1,10 +1,10 @@
 ---
-title: "SOIL Approval Workflow and Review Process"
+title: "SOIL Approval Workflow: Routing Outputs Through Human Review"
 sidebarTitle: "Approval Workflow"
 description: "Understand the READY_FOR_REVIEW approval posture, the review lifecycle, and how to route BEL SOIL outputs through your human review workflow."
 ---
 
-SOIL does not approve its own outputs. Every output SOIL produces is delivered in `READY_FOR_REVIEW` posture — the analysis is complete, the objects are structured, the ledgers are populated, and the output is waiting for your reviewers. What happens next is your organization's responsibility. Your reviewers examine the output, apply their judgment, and progress it through your internal review lifecycle. SOIL provides the governed foundation; your human review process provides the final determination. This page explains the approval posture values, the recommended review lifecycle, and the export tools that make reviewer handoff straightforward.
+SOIL does not approve its own outputs. Every output SOIL produces is delivered in `READY_FOR_REVIEW` posture — the analysis is complete, the objects are structured, the ledgers are populated, and the output is waiting for your reviewers. What happens next is your organization's responsibility. Your reviewers examine the output, apply their judgment, and progress it through your internal review lifecycle. SOIL provides the governed foundation; your human review process provides the final determination. This page explains the approval posture values, the recommended review lifecycle, and the export tools that make routing outputs to reviewers straightforward.
 
 ## Approval Status Values
 
@@ -33,7 +33,7 @@ The standard review lifecycle for a SOIL output moves through the following step
     Call `createSoilCompletionScenarioRun()` or `createSoilCompletionScenarioRunFromRequest()` to produce a scenario output. SOIL assembles all objects — scenario run, financial scenarios, environmental output, executive assessment, ledgers, observability trace, and protected-use status — and returns them with `approvalStatus: READY_FOR_REVIEW` on every object.
 
     ```typescript
-    import { createSoilCompletionScenarioRun } from 'functions/src/soil/services/soilCompletion';
+    import { createSoilCompletionScenarioRun } from '@bel/soil';
 
     const scenarioRun = await createSoilCompletionScenarioRun(request);
 
@@ -54,7 +54,7 @@ The standard review lifecycle for a SOIL output moves through the following step
     }
     ```
 
-    If you use `buildExportReadyObjectPackage()`, the full package is pre-assembled for reviewer handoff. See [Export Package for Review](#export-package-for-review) below.
+    If you use `buildExportReadyObjectPackage()`, the full package is pre-assembled for reviewer delivery. See [Export Package for Review](#export-package-for-review) below.
   </Step>
 
   <Step title="Human Review">
@@ -122,7 +122,7 @@ You must not bypass a `requires_review` output. Treat it as a mandatory review t
 
 ## Export Package for Review
 
-SOIL provides two builder functions that produce pre-assembled, reviewer-ready output bundles. Use these as your standard handoff format — they ensure every required object is present and validated before the package reaches your reviewer.
+SOIL provides two builder functions that produce pre-assembled, reviewer-ready output bundles. Use these as your standard delivery format — they ensure every required object is present and validated before the package reaches your reviewer.
 
 **`buildExportReadyObjectPackage()`** produces the full `SoilCompletionExportReadyObjectPackage`, which includes:
 
@@ -147,7 +147,7 @@ SOIL provides two builder functions that produce pre-assembled, reviewer-ready o
 import {
   buildExportReadyObjectPackage,
   buildAdminHubReadableSoilOutput,
-} from 'functions/src/soil/services/soilCompletion';
+} from '@bel/soil';
 
 // Full structured package for your review system
 const exportPackage = buildExportReadyObjectPackage(scenarioRun, allObjects);

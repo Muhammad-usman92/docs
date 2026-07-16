@@ -60,7 +60,7 @@ Use `buildOcm10Handoff()` to produce the handoff object and `validateOcm10Handof
 import {
   buildOcm10Handoff,
   validateOcm10Handoff,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const ocm10Handoff = buildOcm10Handoff({
   linkedFusionObjectId: "fusion_run_001",
@@ -83,7 +83,7 @@ Use `buildHumanEnvironmentFusion()` to produce the fusion object from a complete
 import {
   buildHumanEnvironmentFusion,
   validateHumanEnvironmentFusion,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const fusionOutput = buildHumanEnvironmentFusion({
   scenarioRunId: "scenario_run_001",
@@ -161,7 +161,7 @@ Use `buildRealityFeedbackHook()` to produce the feedback object:
 import {
   buildRealityFeedbackHook,
   validateRealityFeedbackHook,
-} from "functions/src/soil/services/soilCompletion";
+} from "@bel/soil";
 
 const feedbackHook = buildRealityFeedbackHook({
   scenarioRunId: "scenario_run_001",

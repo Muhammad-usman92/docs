@@ -1,7 +1,7 @@
 ---
 title: "SOIL Safety Posture: Decision-Support-Only Guarantee"
 sidebarTitle: "Safety Posture"
-description: "BEL SOIL enforces a decision-support-only safety posture on every output. Understand the guardrails, prohibited behaviors, and mandatory human review requirements."
+description: "BEL SOIL enforces a decision-support-only safety posture on every output. Learn the guardrails, prohibited behaviors, and human review requirements."
 ---
 
 BEL SOIL is a governed decision-support backend — not a decision-making system. Every output SOIL produces carries an explicit safety posture that tells you, your reviewers, and your downstream systems exactly what that output is permitted to do: inform a human decision, never replace one. Understanding this posture is foundational to integrating SOIL correctly. If your integration treats any SOIL output as a final determination, you are using it outside its governed scope.
@@ -56,7 +56,7 @@ SOIL enforces its safety posture through a set of runtime guardrails that evalua
   </Accordion>
 
   <Accordion title="Blocked Sector Pack Safe Failure">
-    If a requested sector pack is not active or is outside the current governed scope, SOIL returns a structured safe failure rather than attempting a partial analysis. This is intentional — SOIL never claims to support a sector it cannot fully govern. The blocked pack failure path is acceptance-tested.
+    If a requested sector pack is not active or is outside the current governed scope, SOIL returns a structured safe failure rather than attempting a partial analysis. This is intentional — SOIL never claims to support a sector it cannot fully govern. Your integration will always receive a clean, structured failure response rather than a partial or ambiguous result.
   </Accordion>
 
   <Accordion title="Small-Group Data Suppression and Rollup">
@@ -64,7 +64,7 @@ SOIL enforces its safety posture through a set of runtime guardrails that evalua
   </Accordion>
 
   <Accordion title="Prohibited Output Field Blocking">
-    Fields that would constitute legal determinations, credibility scores, allegation truth scores, compliance-pass certifications, or safety certifications are blocked from the output schema. If an internal assembly step attempts to populate a prohibited field, the output is rejected before it reaches your system.
+    Fields that would constitute legal determinations, credibility scores, allegation truth scores, compliance-pass certifications, or safety certifications are blocked from the output schema. If any output construction step attempts to populate a prohibited field, the output is rejected before it reaches your system.
   </Accordion>
 
   <Accordion title="GIS Rendering Field Blocking">

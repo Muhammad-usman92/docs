@@ -1,10 +1,10 @@
 ---
-title: "BEL SOIL TypeScript Type Contracts Reference"
+title: "BEL SOIL SDK: TypeScript Types and Schema Contracts"
 sidebarTitle: "Type Contracts"
-description: "TypeScript type contracts exported by the BEL SOIL SDK — the complete list of model types, schema versions, and constant groups available in your integration."
+description: "TypeScript type contracts from the BEL SOIL SDK — 24 model types, 14 schema version keys, and approval posture constants for type-safe integrations."
 ---
 
-The SOIL SDK exports TypeScript types for every output object in the pipeline. Use these types to build type-safe integrations — they describe the exact shape of every object produced by a builder and consumed by a validator. Import from `functions/src/soil/models` for types and from `functions/src/soil/constants` for schema version strings and sector family identifiers.
+The SOIL SDK exports TypeScript types for every output object in the pipeline. Use these types to build type-safe integrations — they describe the exact shape of every object produced by a builder and consumed by a validator. Import types and constants from `@bel/soil`, which re-exports the full model and constants surface through a single barrel entry point.
 
 ## Import Paths
 
@@ -15,22 +15,20 @@ import type {
   SoilCompletionSectorPackConfig,
   SoilCompletionExecutiveReadinessAssessment,
   SoilCompletionExportReadyObjectPackage,
-} from 'functions/src/soil/models';
+} from '@bel/soil';
 
 // Constants
 import {
   SOIL_COMPLETION_SCHEMA_VERSIONS,
   SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES,
-} from 'functions/src/soil/constants';
+} from '@bel/soil';
 ```
 
-You can also import everything through the top-level barrel:
+You can also mix types and constants in a single import:
 
 ```typescript
-import type { SoilCompletionScenarioRun } from 'functions/src/soil/models';
-import { SOIL_COMPLETION_SCHEMA_VERSIONS } from 'functions/src/soil/constants';
-// or from the root barrel:
-import { SOIL_COMPLETION_SCHEMA_VERSIONS } from 'functions/src/soil';
+import type { SoilCompletionScenarioRun } from '@bel/soil';
+import { SOIL_COMPLETION_SCHEMA_VERSIONS } from '@bel/soil';
 ```
 
 ---
@@ -131,10 +129,10 @@ import { SOIL_COMPLETION_SCHEMA_VERSIONS } from 'functions/src/soil';
 
 ## Schema Version Constants
 
-`SOIL_COMPLETION_SCHEMA_VERSIONS` is a constant object exported from `functions/src/soil/constants`. Use these string values to verify schema version fields on any SOIL object.
+`SOIL_COMPLETION_SCHEMA_VERSIONS` is a constant object exported from `@bel/soil`. Use these string values to verify schema version fields on any SOIL object.
 
 ```typescript
-import { SOIL_COMPLETION_SCHEMA_VERSIONS } from 'functions/src/soil/constants';
+import { SOIL_COMPLETION_SCHEMA_VERSIONS } from '@bel/soil';
 
 // Verify a received object before processing
 if (sectorPackConfig.schemaVersion !== SOIL_COMPLETION_SCHEMA_VERSIONS.sector_pack_config_v2) {
@@ -172,7 +170,7 @@ if (sectorPackConfig.schemaVersion !== SOIL_COMPLETION_SCHEMA_VERSIONS.sector_pa
 `SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES` lists the active sector pack IDs recognized by the SOIL backend.
 
 ```typescript
-import { SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES } from 'functions/src/soil/constants';
+import { SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES } from '@bel/soil';
 
 // Use in request validation
 if (!SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES.active.includes(request.sectorPackId)) {
@@ -205,7 +203,7 @@ if (!SOIL_COMPLETION_SUPPORTED_SECTOR_FAMILIES.active.includes(request.sectorPac
 All SOIL objects that carry an `approvalStatus` field must use a value from the governed posture vocabulary. Prohibited language — `certified`, `authorized`, `compliance_pass`, or unsupported external-validation claims — will cause validation to fail.
 
 ```typescript
-import { SOIL_COMPLETION_APPROVAL_POSTURE } from 'functions/src/soil/constants';
+import { SOIL_COMPLETION_APPROVAL_POSTURE } from '@bel/soil';
 
 // Example: check that an object is in a review-ready state
 if (assessment.approvalStatus === SOIL_COMPLETION_APPROVAL_POSTURE.ready_for_review) {
